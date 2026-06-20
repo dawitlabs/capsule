@@ -51,48 +51,75 @@ async function detectInstalledCli(name: string): Promise<boolean> {
   });
 }
 
+const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+const SPINNER_MESSAGES = [
+  "reading your codebase",
+  "extracting patterns",
+  "writing capsules",
+  "analyzing conventions",
+  "mapping decisions",
+];
+
+function withSpinner<T>(task: () => Promise<T>): Promise<T> {
+  if (!process.stdout.isTTY) return task();
+
+  let tick = 0;
+  const draw = () => {
+    const f = SPINNER_FRAMES[tick % SPINNER_FRAMES.length];
+    const m = SPINNER_MESSAGES[Math.floor(tick / 10) % SPINNER_MESSAGES.length];
+    process.stdout.write(`\r  ${f}  ${m}...`);
+    tick++;
+  };
+
+  draw();
+  const timer = setInterval(draw, 80);
+  const stop = () => {
+    clearInterval(timer);
+    process.stdout.write("\r\x1b[K");
+  };
+
+  return task().then(
+    (result) => { stop(); return result; },
+    (err: unknown) => { stop(); throw err; },
+  );
+}
+
 async function callClaudeCli(prompt: string): Promise<AiEnrichResult> {
-  return new Promise((resolve, reject) => {
-    const proc = spawn("claude", ["--print"], {
-      stdio: ["pipe", "pipe", "pipe"],
-      timeout: 300_000,
-    });
+  return withSpinner(
+    () =>
+      new Promise((resolve, reject) => {
+        const proc = spawn("claude", ["--print"], {
+          stdio: ["pipe", "pipe", "pipe"],
+          timeout: 300_000,
+        });
 
-    // Print a dot every 3s so the user knows it's working.
-    const ticker = setInterval(() => process.stdout.write("."), 3_000);
+        let stdout = "";
+        let stderr = "";
 
-    let stdout = "";
-    let stderr = "";
+        proc.stdout.on("data", (d: Buffer) => {
+          stdout += d.toString();
+        });
+        proc.stderr.on("data", (d: Buffer) => {
+          stderr += d.toString();
+        });
 
-    proc.stdout.on("data", (d: Buffer) => {
-      stdout += d.toString();
-    });
-    proc.stderr.on("data", (d: Buffer) => {
-      stderr += d.toString();
-    });
+        proc.on("error", reject);
+        proc.on("close", (code) => {
+          if (code !== 0) {
+            reject(new Error(`claude exited with code ${code}: ${stderr.slice(0, 300)}`));
+            return;
+          }
+          try {
+            resolve(parseAiResponse(stdout));
+          } catch {
+            reject(new Error(`Could not parse claude CLI output as JSON:\n${stdout.slice(0, 400)}`));
+          }
+        });
 
-    proc.on("error", (err) => {
-      clearInterval(ticker);
-      process.stdout.write("\n");
-      reject(err);
-    });
-    proc.on("close", (code) => {
-      clearInterval(ticker);
-      process.stdout.write("\n");
-      if (code !== 0) {
-        reject(new Error(`claude exited with code ${code}: ${stderr.slice(0, 300)}`));
-        return;
-      }
-      try {
-        resolve(parseAiResponse(stdout));
-      } catch {
-        reject(new Error(`Could not parse claude CLI output as JSON:\n${stdout.slice(0, 400)}`));
-      }
-    });
-
-    proc.stdin.write(prompt);
-    proc.stdin.end();
-  });
+        proc.stdin.write(prompt);
+        proc.stdin.end();
+      }),
+  );
 }
 
 export async function getEnrichOptions(root: string): Promise<EnrichOption[]> {
@@ -355,29 +382,17 @@ export async function enrichWithAI(
     return null;
   }
 
-  if (choice === "claude-cli") {
-    writeLine("");
-    writeLine("  Launching claude CLI (30–60s)...");
-    try {
-      const result = await callClaudeCli(prompt);
-      writeLine(`  Done — ${Object.keys(result).length} capsules enriched.`);
-      return result;
-    } catch (err) {
-      writeLine(`  claude CLI failed: ${err instanceof Error ? err.message : String(err)}`);
-      writeLine("  Falling back to static analysis.");
-      return null;
-    }
-  }
+  const label = choice === "claude-cli" ? "claude CLI" : choice === "claude" ? "Claude" : "OpenAI";
 
   writeLine("");
-  writeLine(`  Analyzing with ${choice === "claude" ? "Claude" : "OpenAI"}...`);
-
   try {
-    const result = choice === "claude" ? await callClaude(prompt) : await callOpenAI(prompt);
-    writeLine(`  Done — ${Object.keys(result).length} capsules enriched.`);
+    const result = await (choice === "claude-cli"
+      ? callClaudeCli(prompt)
+      : withSpinner(() => (choice === "claude" ? callClaude(prompt) : callOpenAI(prompt))));
+    writeLine(`  Done — ${Object.keys(result).length} capsules enriched via ${label}.`);
     return result;
   } catch (err) {
-    writeLine(`  AI enrichment failed: ${err instanceof Error ? err.message : String(err)}`);
+    writeLine(`  ${label} failed: ${err instanceof Error ? err.message : String(err)}`);
     writeLine("  Falling back to static analysis.");
     return null;
   }
