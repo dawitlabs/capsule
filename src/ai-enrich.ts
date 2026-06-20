@@ -80,8 +80,14 @@ function withSpinner<T>(task: () => Promise<T>): Promise<T> {
   };
 
   return task().then(
-    (result) => { stop(); return result; },
-    (err: unknown) => { stop(); throw err; },
+    (result) => {
+      stop();
+      return result;
+    },
+    (err: unknown) => {
+      stop();
+      throw err;
+    },
   );
 }
 
