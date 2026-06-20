@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import * as rl from "node:readline/promises";
 import type { SourceGroup } from "./types.js";
@@ -34,7 +34,7 @@ async function detectProjectAiPreference(root: string): Promise<"claude" | "open
 }
 
 export interface EnrichOption {
-  id: "claude" | "openai";
+  id: "claude" | "openai" | "prompt";
   label: string;
   available: boolean;
 }
@@ -45,20 +45,31 @@ export async function getEnrichOptions(root: string): Promise<EnrichOption[]> {
   const options: EnrichOption[] = [
     {
       id: "claude",
-      label: process.env.ANTHROPIC_API_KEY ? "Claude  (ANTHROPIC_API_KEY ✓)" : "Claude  (ANTHROPIC_API_KEY not set)",
+      label: process.env.ANTHROPIC_API_KEY
+        ? "Claude API  (ANTHROPIC_API_KEY ✓)"
+        : "Claude API  (ANTHROPIC_API_KEY not set)",
       available: Boolean(process.env.ANTHROPIC_API_KEY),
     },
     {
       id: "openai",
       label: process.env.OPENAI_API_KEY
-        ? "OpenAI GPT-4o  (OPENAI_API_KEY ✓)"
-        : "OpenAI GPT-4o  (OPENAI_API_KEY not set)",
+        ? "OpenAI GPT-4o API  (OPENAI_API_KEY ✓)"
+        : "OpenAI GPT-4o API  (OPENAI_API_KEY not set)",
       available: Boolean(process.env.OPENAI_API_KEY),
+    },
+    {
+      // Always available — works with Claude.ai, ChatGPT, Cursor, Windsurf, Copilot, any browser session.
+      id: "prompt",
+      label: "Generate prompt  (paste into Claude.ai / ChatGPT / Cursor / any AI)",
+      available: true,
     },
   ];
 
-  // Put the project's preferred AI first.
-  if (preference === "openai") options.reverse();
+  // Put the project's preferred API-based AI first.
+  if (preference === "openai") {
+    const [claude, openai, ...rest] = options;
+    return [openai, claude, ...rest];
+  }
 
   return options;
 }
@@ -66,14 +77,11 @@ export async function getEnrichOptions(root: string): Promise<EnrichOption[]> {
 export async function promptAiSelection(
   options: EnrichOption[],
   writeLine: (s: string) => void,
-): Promise<"claude" | "openai" | null> {
+): Promise<"claude" | "openai" | "prompt" | null> {
   if (!process.stdin.isTTY || !process.stdout.isTTY) return null;
 
-  const available = options.filter((o) => o.available);
-  if (available.length === 0) return null;
-
   writeLine("");
-  writeLine("Enrich capsules with AI? (generates much richer content than static analysis)");
+  writeLine("Enrich capsules with AI? (much richer content than static analysis)");
   writeLine("");
   options.forEach((o, i) => {
     const marker = o.available ? `  ${i + 1}.` : "  -";
@@ -94,15 +102,16 @@ export async function promptAiSelection(
   if (n === 0 || Number.isNaN(n)) return null;
 
   const choice = options[n - 1];
-  if (!choice?.available) {
-    writeLine(`  Set ${choice?.id === "openai" ? "OPENAI_API_KEY" : "ANTHROPIC_API_KEY"} to use this option.`);
+  if (!choice) return null;
+  if (!choice.available) {
+    writeLine(`  Set ${choice.id === "openai" ? "OPENAI_API_KEY" : "ANTHROPIC_API_KEY"} to use this option.`);
     return null;
   }
   return choice.id;
 }
 
 // Build a concise file dump for the AI prompt (~30KB max).
-async function buildFileContext(root: string, groups: SourceGroup[]): Promise<string> {
+export async function buildFileContext(root: string, groups: SourceGroup[]): Promise<string> {
   const MAX_FILE = 1_800;
   const seen = new Set<string>();
   const parts: string[] = [];
@@ -146,7 +155,7 @@ async function buildFileContext(root: string, groups: SourceGroup[]): Promise<st
   return parts.join("\n\n");
 }
 
-function buildPrompt(fileContext: string, groups: SourceGroup[]): string {
+export function buildPrompt(fileContext: string, groups: SourceGroup[]): string {
   const groupList = groups.map((g) => `- ${g.name}: ${g.description}`).join("\n");
 
   return `You are analyzing a software project to write AI coding-agent context capsules.
@@ -176,7 +185,7 @@ Rules:
 - Be SPECIFIC to this exact codebase — no boilerplate`;
 }
 
-function parseAiResponse(text: string): AiEnrichResult {
+export function parseAiResponse(text: string): AiEnrichResult {
   // Strip markdown code fences if present.
   const stripped = text
     .replace(/^```(?:json)?\s*/m, "")
@@ -248,16 +257,30 @@ async function callOpenAI(prompt: string): Promise<AiEnrichResult> {
 }
 
 export async function enrichWithAI(
-  choice: "claude" | "openai",
+  choice: "claude" | "openai" | "prompt",
   root: string,
   groups: SourceGroup[],
   writeLine: (s: string) => void,
 ): Promise<AiEnrichResult | null> {
-  writeLine("");
-  writeLine(`  Analyzing with ${choice === "claude" ? "Claude" : "OpenAI"}...`);
-
   const fileContext = await buildFileContext(root, groups);
   const prompt = buildPrompt(fileContext, groups);
+
+  if (choice === "prompt") {
+    const promptPath = join(root, ".capsules", "enrich-prompt.md");
+    await writeFile(promptPath, prompt, "utf8");
+    writeLine("");
+    writeLine("  Prompt written to .capsules/enrich-prompt.md");
+    writeLine("");
+    writeLine("  1. Open that file and paste its contents into Claude.ai, ChatGPT, Cursor, or any AI.");
+    writeLine("  2. Copy the JSON the AI responds with.");
+    writeLine("  3. Run:  capsule apply");
+    writeLine("     (then paste the JSON and press Ctrl-D)");
+    writeLine("");
+    return null;
+  }
+
+  writeLine("");
+  writeLine(`  Analyzing with ${choice === "claude" ? "Claude" : "OpenAI"}...`);
 
   try {
     const result = choice === "claude" ? await callClaude(prompt) : await callOpenAI(prompt);

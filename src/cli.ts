@@ -4,7 +4,14 @@ import { readFile, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Command } from "commander";
-import { enrichWithAI, getEnrichOptions, promptAiSelection } from "./ai-enrich.js";
+import {
+  buildFileContext,
+  buildPrompt,
+  enrichWithAI,
+  getEnrichOptions,
+  parseAiResponse,
+  promptAiSelection,
+} from "./ai-enrich.js";
 import { extractGroupContent } from "./capsule-content.js";
 import { readCapsule, writeCapsule } from "./capsule-format.js";
 import { mergeCapsuleBody } from "./capsule-merge.js";
@@ -174,6 +181,79 @@ export function createProgram(runtime: CliRuntime): Command {
       runtime.writeLine(`  estimated tokens: ${estimate.withCapsuleTokens.toLocaleString("en-US")}`);
       runtime.writeLine("");
       runtime.writeLine(`Estimated discovery savings: ${estimate.savingsPercent}%`);
+    });
+
+  program
+    .command("apply")
+    .description("Apply AI-generated JSON to capsule Conventions and Decisions (reads stdin)")
+    .action(async () => {
+      const groups = await scanRepository(runtime.root);
+
+      // Try reading from a prompt file first, otherwise stdin.
+      let input = "";
+      try {
+        input = await readFile(join(runtime.root, ".capsules", "enrich-response.md"), "utf8");
+      } catch {
+        if (!process.stdin.isTTY) {
+          const chunks: Buffer[] = [];
+          for await (const chunk of process.stdin) chunks.push(chunk as Buffer);
+          input = Buffer.concat(chunks).toString("utf8");
+        } else {
+          runtime.writeLine("Paste the JSON from your AI, then press Ctrl-D:");
+          const chunks: Buffer[] = [];
+          for await (const chunk of process.stdin) chunks.push(chunk as Buffer);
+          input = Buffer.concat(chunks).toString("utf8");
+        }
+      }
+
+      let aiContent: ReturnType<typeof parseAiResponse>;
+      try {
+        aiContent = parseAiResponse(input);
+      } catch {
+        throw new Error("Could not parse AI response as JSON. Make sure you copied the full JSON output.");
+      }
+
+      let applied = 0;
+      for (const group of groups) {
+        const enrichment = aiContent[group.name];
+        if (!enrichment) continue;
+        await writeGroupCapsule(runtime.root, group, enrichment);
+        applied++;
+      }
+
+      runtime.writeLine(`Applied AI enrichment to ${applied} capsule${applied !== 1 ? "s" : ""}.`);
+    });
+
+  program
+    .command("enrich")
+    .description("Re-enrich existing capsules with AI (same options as init)")
+    .action(async () => {
+      const groups = await scanRepository(runtime.root);
+      const enrichOptions = await getEnrichOptions(runtime.root);
+      const aiChoice = await promptAiSelection(enrichOptions, runtime.writeLine);
+
+      if (!aiChoice) {
+        // No API keys and user skipped — write prompt file for browser users.
+        const fileContext = await buildFileContext(runtime.root, groups);
+        const prompt = buildPrompt(fileContext, groups);
+        const promptPath = join(runtime.root, ".capsules", "enrich-prompt.md");
+        await writeFile(promptPath, prompt, "utf8");
+        runtime.writeLine("Prompt written to .capsules/enrich-prompt.md");
+        runtime.writeLine("Paste it into your AI, copy the JSON response, then run: capsule apply");
+        return;
+      }
+
+      const aiContent = await enrichWithAI(aiChoice, runtime.root, groups, runtime.writeLine);
+      if (!aiContent) return;
+
+      let applied = 0;
+      for (const group of groups) {
+        const enrichment = aiContent[group.name];
+        if (!enrichment) continue;
+        await writeGroupCapsule(runtime.root, group, enrichment);
+        applied++;
+      }
+      runtime.writeLine(`Enriched ${applied} capsule${applied !== 1 ? "s" : ""}.`);
     });
 
   return program;
