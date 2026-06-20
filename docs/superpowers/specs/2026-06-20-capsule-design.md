@@ -20,6 +20,12 @@ The first public promise is:
 
 > Build source-linked Markdown context packs for any repository, so agents use fewer tokens and make fewer wrong assumptions.
 
+The measurable product target is:
+
+> Reduce repeated repository-discovery context by 50-70% on large, multi-session agent tasks.
+
+This target applies to discovery context, not every token an agent spends. Capsule should reduce repeated scanning, orientation, and handoff overhead. It does not reduce the tokens needed to read the exact source code being edited.
+
 ## Target User
 
 The first user is a developer who uses coding agents on medium or large projects and keeps paying the cost of repeated context discovery.
@@ -44,6 +50,7 @@ capsule scan
 capsule write <name>
 capsule get <name>
 capsule stale
+capsule estimate <name>
 ```
 
 The CLI creates a `.capsules/` directory:
@@ -163,6 +170,35 @@ capsule get api
 ```
 
 If the capsule is stale, the agent should read the changed source files before editing.
+
+## Token Savings Model
+
+Capsule should make savings visible with `capsule estimate <name>`.
+
+The first estimate is intentionally simple:
+
+- Estimate uncapsuled discovery as the token cost of all files matched by the capsule's `sources`.
+- Estimate capsuled discovery as the token cost of the capsule Markdown plus changed or stale source files.
+- Report percentage savings.
+
+Example:
+
+```txt
+Capsule: api
+
+Without Capsule:
+  files: 38
+  estimated tokens: 82,000
+
+With Capsule:
+  capsule tokens: 4,200
+  stale source tokens: 19,000
+  estimated tokens: 23,200
+
+Estimated discovery savings: 71%
+```
+
+The estimator is a directional metric, not a billing-accurate tokenizer. v0 may use a conservative approximation of 4 characters per token.
 
 ## Non-Goals For v0
 
