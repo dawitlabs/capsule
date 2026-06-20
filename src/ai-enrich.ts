@@ -1,5 +1,6 @@
 import { execFile, spawn } from "node:child_process";
 import { readFile, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import * as rl from "node:readline/promises";
 import type { SourceGroup } from "./types.js";
@@ -88,8 +89,10 @@ async function callClaudeCli(prompt: string): Promise<AiEnrichResult> {
   return withSpinner(
     () =>
       new Promise((resolve, reject) => {
+        // Run from tmpdir so claude doesn't load the project's CLAUDE.md / MCP tools.
         const proc = spawn("claude", ["--print"], {
           stdio: ["pipe", "pipe", "pipe"],
+          cwd: tmpdir(),
           timeout: 300_000,
         });
 
