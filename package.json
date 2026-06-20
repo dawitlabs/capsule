@@ -7,7 +7,8 @@
   "author": "Dawit Worku",
   "type": "module",
   "bin": {
-    "capsule": "./dist/cli.js"
+    "capsule": "./dist/cli.js",
+    "capsulectx": "./dist/cli.js"
   },
   "files": [
     "dist",
