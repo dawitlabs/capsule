@@ -85,44 +85,68 @@ function withSpinner<T>(task: () => Promise<T>): Promise<T> {
   );
 }
 
-async function callClaudeCli(prompt: string): Promise<AiEnrichResult> {
-  return withSpinner(
-    () =>
-      new Promise((resolve, reject) => {
-        // Run from tmpdir so claude doesn't load the project's CLAUDE.md / MCP tools.
-        const proc = spawn("claude", ["--print"], {
-          stdio: ["pipe", "pipe", "pipe"],
-          cwd: tmpdir(),
-          timeout: 300_000,
-        });
+function spawnClaude(prompt: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    // Run from tmpdir so claude doesn't load the project's CLAUDE.md / MCP tools.
+    const proc = spawn("claude", ["--print"], {
+      stdio: ["pipe", "pipe", "pipe"],
+      cwd: tmpdir(),
+      timeout: 120_000,
+    });
 
-        let stdout = "";
-        let stderr = "";
+    let stdout = "";
+    let stderr = "";
 
-        proc.stdout.on("data", (d: Buffer) => {
-          stdout += d.toString();
-        });
-        proc.stderr.on("data", (d: Buffer) => {
-          stderr += d.toString();
-        });
+    proc.stdout.on("data", (d: Buffer) => {
+      stdout += d.toString();
+    });
+    proc.stderr.on("data", (d: Buffer) => {
+      stderr += d.toString();
+    });
 
-        proc.on("error", reject);
-        proc.on("close", (code) => {
-          if (code !== 0) {
-            reject(new Error(`claude exited with code ${code}: ${stderr.slice(0, 300)}`));
-            return;
-          }
-          try {
-            resolve(parseAiResponse(stdout));
-          } catch {
-            reject(new Error(`Could not parse claude CLI output as JSON:\n${stdout.slice(0, 400)}`));
-          }
-        });
+    proc.on("error", reject);
+    proc.on("close", (code) => {
+      if (code !== 0) {
+        reject(new Error(`claude exited with code ${code}: ${stderr.slice(0, 200)}`));
+      } else {
+        resolve(stdout);
+      }
+    });
 
-        proc.stdin.write(prompt);
-        proc.stdin.end();
-      }),
+    proc.stdin.write(prompt);
+    proc.stdin.end();
+  });
+}
+
+async function callClaudeCli(fileContext: string, groups: SourceGroup[]): Promise<AiEnrichResult> {
+  // One subprocess per group, all in parallel — each generates ~200 tokens instead of ~1500 serial.
+  const settled = await Promise.allSettled(
+    groups.map(async (group) => {
+      const raw = await spawnClaude(buildGroupPrompt(fileContext, group));
+      const stripped = raw
+        .replace(/^```(?:json)?\s*/m, "")
+        .replace(/\s*```\s*$/m, "")
+        .trim();
+      const parsed = JSON.parse(stripped) as { conventions?: unknown; decisions?: unknown };
+      return { name: group.name, parsed };
+    }),
   );
+
+  const result: AiEnrichResult = {};
+  for (const s of settled) {
+    if (s.status === "rejected") continue;
+    const { name, parsed } = s.value;
+    result[name] = {
+      conventions: Array.isArray(parsed.conventions)
+        ? (parsed.conventions as unknown[]).filter((x): x is string => typeof x === "string")
+        : [],
+      decisions: Array.isArray(parsed.decisions)
+        ? (parsed.decisions as unknown[]).filter((x): x is string => typeof x === "string")
+        : [],
+    };
+  }
+
+  return result;
 }
 
 export async function getEnrichOptions(root: string): Promise<EnrichOption[]> {
@@ -291,6 +315,23 @@ Rules:
 - Be SPECIFIC to this exact codebase — no boilerplate`;
 }
 
+function buildGroupPrompt(fileContext: string, group: SourceGroup): string {
+  return `You are writing a context capsule for the "${group.name}" section of a software project.
+${group.description}
+
+PROJECT FILES:
+${fileContext}
+
+Write ONLY for "${group.name}":
+- "conventions": HOW code is written — observable patterns from the actual files
+- "decisions": WHY — tool choices, architectural decisions specific to this project
+
+Output ONLY valid JSON (no markdown, no other text):
+{"conventions": ["- item"], "decisions": ["- item"]}
+
+Rules: bullet items start "- ", 1-3 items per section, specific to this exact codebase.`;
+}
+
 export function parseAiResponse(text: string): AiEnrichResult {
   // Strip markdown code fences if present.
   const stripped = text
@@ -390,7 +431,7 @@ export async function enrichWithAI(
   writeLine("");
   try {
     const result = await (choice === "claude-cli"
-      ? callClaudeCli(prompt)
+      ? withSpinner(() => callClaudeCli(fileContext, groups))
       : withSpinner(() => (choice === "claude" ? callClaude(prompt) : callOpenAI(prompt))));
     writeLine(`  Done — ${Object.keys(result).length} capsules enriched via ${label}.`);
     return result;
