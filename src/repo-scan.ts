@@ -1,3 +1,5 @@
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 import fg from "fast-glob";
 import type { SourceGroup } from "./types.js";
 
@@ -34,7 +36,7 @@ export const DEFAULT_IGNORE = [
   "**/__pycache__/**",
 ];
 
-const GROUPS: Array<Omit<SourceGroup, "files">> = [
+const DEFAULT_GROUPS: Array<Omit<SourceGroup, "files">> = [
   {
     name: "architecture",
     description: "Repository structure, docs, and high-level project shape.",
@@ -43,7 +45,15 @@ const GROUPS: Array<Omit<SourceGroup, "files">> = [
   {
     name: "setup",
     description: "Local setup, scripts, dependencies, and runtime configuration.",
-    sources: ["package.json", "package-lock.json", "pnpm-workspace.yaml", "yarn.lock", "docker-compose.yml", "Dockerfile", ".env.example"],
+    sources: [
+      "package.json",
+      "package-lock.json",
+      "pnpm-workspace.yaml",
+      "yarn.lock",
+      "docker-compose.yml",
+      "Dockerfile",
+      ".env.example",
+    ],
   },
   {
     name: "api",
@@ -72,27 +82,104 @@ const GROUPS: Array<Omit<SourceGroup, "files">> = [
   },
 ];
 
-export async function listRepositoryFiles(rootDir: string): Promise<string[]> {
+export interface CapsuleConfig {
+  groups: Array<{ name: string; description?: string; sources: string[] }>;
+  ignore: string[];
+}
+
+export async function loadConfig(rootDir: string): Promise<CapsuleConfig> {
+  const configPath = join(rootDir, ".capsules", "config.json");
+
+  let raw: string;
+  try {
+    raw = await readFile(configPath, "utf8");
+  } catch {
+    return { groups: [], ignore: [] };
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    throw new Error(`.capsules/config.json is not valid JSON`);
+  }
+
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+    throw new Error(`.capsules/config.json must be a JSON object`);
+  }
+
+  const obj = parsed as Record<string, unknown>;
+  const groups: CapsuleConfig["groups"] = [];
+  const ignore: string[] = [];
+
+  if (obj.groups !== undefined) {
+    if (!Array.isArray(obj.groups)) {
+      throw new Error(`.capsules/config.json: "groups" must be an array`);
+    }
+    for (const [i, g] of (obj.groups as unknown[]).entries()) {
+      if (typeof g !== "object" || g === null || Array.isArray(g)) {
+        throw new Error(`.capsules/config.json: groups[${i}] must be an object`);
+      }
+      const entry = g as Record<string, unknown>;
+      if (typeof entry.name !== "string") {
+        throw new Error(`.capsules/config.json: groups[${i}].name must be a string`);
+      }
+      if (!Array.isArray(entry.sources)) {
+        throw new Error(`.capsules/config.json: groups[${i}].sources must be an array`);
+      }
+      groups.push({
+        name: entry.name,
+        description: typeof entry.description === "string" ? entry.description : "",
+        sources: entry.sources as string[],
+      });
+    }
+  }
+
+  if (obj.ignore !== undefined) {
+    if (!Array.isArray(obj.ignore)) {
+      throw new Error(`.capsules/config.json: "ignore" must be an array`);
+    }
+    ignore.push(...(obj.ignore as string[]));
+  }
+
+  return { groups, ignore };
+}
+
+export async function listRepositoryFiles(rootDir: string, extraIgnore: string[] = []): Promise<string[]> {
   const files = await fg(["**/*"], {
     cwd: rootDir,
     dot: true,
     onlyFiles: true,
-    ignore: DEFAULT_IGNORE,
+    ignore: [...DEFAULT_IGNORE, ...extraIgnore],
   });
 
   return files.sort();
 }
 
 export async function scanRepository(rootDir: string): Promise<SourceGroup[]> {
-  const allFiles = new Set(await listRepositoryFiles(rootDir));
+  const config = await loadConfig(rootDir);
+  const ignore = [...DEFAULT_IGNORE, ...config.ignore];
+
+  // Build merged group list: config overrides default by name, new names appended.
+  const groupMap = new Map(DEFAULT_GROUPS.map((g) => [g.name, { ...g }]));
+  for (const configGroup of config.groups) {
+    groupMap.set(configGroup.name, {
+      name: configGroup.name,
+      description: configGroup.description ?? "",
+      sources: configGroup.sources,
+    });
+  }
+  const groupDefs = [...groupMap.values()];
+
+  const allFiles = new Set(await listRepositoryFiles(rootDir, config.ignore));
   const groups: SourceGroup[] = [];
 
-  for (const group of GROUPS) {
+  for (const group of groupDefs) {
     const matched = await fg(group.sources, {
       cwd: rootDir,
       dot: true,
       onlyFiles: true,
-      ignore: DEFAULT_IGNORE,
+      ignore,
     });
 
     const files = matched.filter((file) => allFiles.has(file)).sort();

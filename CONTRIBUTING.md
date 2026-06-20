@@ -15,6 +15,7 @@ Capsule is early, so the most useful contributions are:
 
 ```bash
 npm install
+npm run lint       # Biome check
 npm run typecheck
 npm test
 npm run build

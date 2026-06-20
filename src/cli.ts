@@ -1,14 +1,20 @@
 #!/usr/bin/env node
+import { readFileSync } from "node:fs";
 import { stat, writeFile } from "node:fs/promises";
-import { fileURLToPath } from "node:url";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { Command } from "commander";
 import { readCapsule, writeCapsule } from "./capsule-format.js";
+import { mergeCapsuleBody } from "./capsule-merge.js";
 import { estimateCapsuleSavings } from "./estimate.js";
 import { compareFingerprints, computeFingerprints } from "./fingerprint.js";
-import { scanRepository } from "./repo-scan.js";
+import { loadConfig, scanRepository } from "./repo-scan.js";
 import { renderCapsuleBody, renderIndex } from "./templates.js";
 import type { SourceGroup, StaleResult } from "./types.js";
+
+const pkg = JSON.parse(readFileSync(join(fileURLToPath(import.meta.url), "../../package.json"), "utf8")) as {
+  version: string;
+};
 
 export interface CliRuntime {
   root: string;
@@ -25,7 +31,7 @@ export async function runCli(argv = process.argv, runtime?: Partial<CliRuntime>)
 export function createProgram(runtime: CliRuntime): Command {
   const program = new Command();
 
-  program.name("capsule").description("Markdown context packs for coding agents").version("0.0.0");
+  program.name("capsule").description("Markdown context packs for coding agents").version(pkg.version);
 
   program
     .command("init")
@@ -81,11 +87,12 @@ export function createProgram(runtime: CliRuntime): Command {
     .argument("[name]")
     .description("Check capsule source staleness")
     .action(async (name?: string) => {
+      const config = await loadConfig(runtime.root);
       const names = name ? [name] : (await scanRepository(runtime.root)).map((group) => group.name);
 
       for (const capsuleName of names) {
         const capsule = await readCapsule(runtime.root, capsuleName);
-        const current = await computeFingerprints(runtime.root, capsule.frontmatter.sources);
+        const current = await computeFingerprints(runtime.root, capsule.frontmatter.sources, config.ignore);
         const result = compareFingerprints(capsuleName, capsule.frontmatter.fingerprints, current);
         printStale(result, runtime.writeLine);
       }
@@ -96,8 +103,9 @@ export function createProgram(runtime: CliRuntime): Command {
     .argument("<name>")
     .description("Estimate repeated-discovery token savings")
     .action(async (name: string) => {
+      const config = await loadConfig(runtime.root);
       const capsule = await readCapsule(runtime.root, name);
-      const current = await computeFingerprints(runtime.root, capsule.frontmatter.sources);
+      const current = await computeFingerprints(runtime.root, capsule.frontmatter.sources, config.ignore);
       const stale = compareFingerprints(name, capsule.frontmatter.fingerprints, current);
       const staleFiles = [...stale.changed, ...stale.added].sort();
       const sourceFiles = Object.keys(current).sort();
@@ -126,7 +134,18 @@ export function createProgram(runtime: CliRuntime): Command {
 }
 
 async function writeGroupCapsule(root: string, group: SourceGroup): Promise<void> {
-  const fingerprints = await computeFingerprints(root, group.sources);
+  const config = await loadConfig(root);
+  const fingerprints = await computeFingerprints(root, group.sources, config.ignore);
+
+  let body = renderCapsuleBody(group);
+
+  // Preserve human-authored sections from an existing capsule.
+  try {
+    const existing = await readCapsule(root, group.name);
+    body = mergeCapsuleBody(body, existing.body);
+  } catch {
+    // No existing capsule — write fresh.
+  }
 
   await writeCapsule(root, {
     frontmatter: {
@@ -136,7 +155,7 @@ async function writeGroupCapsule(root: string, group: SourceGroup): Promise<void
       fingerprints,
       updated_at: await latestSourceTime(root, Object.keys(fingerprints)),
     },
-    body: renderCapsuleBody(group),
+    body,
     path: `.capsules/${group.name}.md`,
   });
 }

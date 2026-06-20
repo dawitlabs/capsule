@@ -11,9 +11,9 @@
     "docker-compose.yml"
   ],
   "fingerprints": {
-    ".github/workflows/ci.yml": "sha256:234816433b578eb5413a2592a5b6f2f46ea121c4147a5ba43c144ca0b04b2e7b"
+    ".github/workflows/ci.yml": "sha256:aff2fe68cbf11c9b907a3fe5c8a824d6ca0a56209e058b3fbdfc812810945a95"
   },
-  "updated_at": "2026-06-20T13:51:14.811Z"
+  "updated_at": "2026-06-20T14:09:27.860Z"
 }
 ---
 # Deployment Capsule

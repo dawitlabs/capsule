@@ -1,12 +1,6 @@
-export type CapsuleName =
-  | "architecture"
-  | "setup"
-  | "api"
-  | "data"
-  | "ui"
-  | "testing"
-  | "deployment"
-  | string;
+export type CapsuleName = string;
+
+export const DEFAULT_CAPSULE_NAMES = ["architecture", "setup", "api", "data", "ui", "testing", "deployment"] as const;
 
 export interface CapsuleFrontmatter {
   name: CapsuleName;

@@ -5,12 +5,16 @@ import fg from "fast-glob";
 import { DEFAULT_IGNORE } from "./repo-scan.js";
 import type { CapsuleName, StaleResult } from "./types.js";
 
-export async function computeFingerprints(rootDir: string, sources: string[]): Promise<Record<string, string>> {
+export async function computeFingerprints(
+  rootDir: string,
+  sources: string[],
+  extraIgnore: string[] = [],
+): Promise<Record<string, string>> {
   const files = await fg(sources, {
     cwd: rootDir,
     dot: true,
     onlyFiles: true,
-    ignore: DEFAULT_IGNORE,
+    ignore: [...DEFAULT_IGNORE, ...extraIgnore],
   });
 
   const fingerprints: Record<string, string> = {};
@@ -31,7 +35,9 @@ export function compareFingerprints(
   const previousFiles = new Set(Object.keys(previous));
   const currentFiles = new Set(Object.keys(current));
 
-  const changed = [...previousFiles].filter((file) => currentFiles.has(file) && previous[file] !== current[file]).sort();
+  const changed = [...previousFiles]
+    .filter((file) => currentFiles.has(file) && previous[file] !== current[file])
+    .sort();
   const missing = [...previousFiles].filter((file) => !currentFiles.has(file)).sort();
   const added = [...currentFiles].filter((file) => !previousFiles.has(file)).sort();
 

@@ -11,13 +11,13 @@
     "Cargo.toml"
   ],
   "fingerprints": {
-    "README.md": "sha256:cf9766fba89a95209607ce62857cd570e7c64ef0bc2ebe9a3c9b79ed278a3679",
+    "README.md": "sha256:755f91a821ebd10a00899cd1b9db1eab6673fc67800afaeb650d1936a400c82c",
     "docs/agent-snippets.md": "sha256:16b45fcca359eb612d65dafd426ee6e05794782e559cfa4668611294835419e4",
     "docs/superpowers/plans/2026-06-20-capsule-cli-v0.md": "sha256:9a0343f6bf80a3e44117a3770f4852a845a040818819ea6e89f09a8e692954a1",
     "docs/superpowers/specs/2026-06-20-capsule-design.md": "sha256:a53988525026dc9d7e0f696dd8ed48ac30a2f82d366174cbf2c11f49f973ac92",
-    "package.json": "sha256:1ec5ebdd4d70ad47dd53181beeb3e832a90c92fea06630ed6bcc7620e24a2851"
+    "package.json": "sha256:b0563da9be4ace6f4d22fcd75fd558427f4096f0ae3a1052f374ef97e7f33d56"
   },
-  "updated_at": "2026-06-20T13:59:17.864Z"
+  "updated_at": "2026-06-20T14:11:47.584Z"
 }
 ---
 # Architecture Capsule

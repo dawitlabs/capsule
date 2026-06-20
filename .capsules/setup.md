@@ -12,10 +12,10 @@
     ".env.example"
   ],
   "fingerprints": {
-    "package-lock.json": "sha256:113b85cff7877f10a86b03f6222c2713565f5d86b0f163f8d5bb5eaf6f93e487",
-    "package.json": "sha256:1ec5ebdd4d70ad47dd53181beeb3e832a90c92fea06630ed6bcc7620e24a2851"
+    "package-lock.json": "sha256:2c7a5ccd781e4474f467fed4f67d37c000f99de310b2e49d8655931fe7ddf712",
+    "package.json": "sha256:b0563da9be4ace6f4d22fcd75fd558427f4096f0ae3a1052f374ef97e7f33d56"
   },
-  "updated_at": "2026-06-20T13:59:24.369Z"
+  "updated_at": "2026-06-20T14:09:21.217Z"
 }
 ---
 # Setup Capsule

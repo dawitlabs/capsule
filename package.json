@@ -16,7 +16,10 @@
   ],
   "scripts": {
     "build": "tsc",
+    "demo": "node scripts/build-demo.mjs",
     "dev": "tsx src/cli.ts",
+    "format": "biome format --write .",
+    "lint": "biome check .",
     "prepack": "npm run build",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
@@ -47,6 +50,7 @@
     "fast-glob": "^3.3.2"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.5.0",
     "@types/node": "^22.10.2",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
