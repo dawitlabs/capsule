@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { basename, join } from "node:path";
+import fg from "fast-glob";
 
 export interface ExtractedContent {
   keyFiles: string[];
@@ -136,19 +137,52 @@ async function buildKeyFiles(root: string, files: string[]): Promise<string[]> {
   );
 }
 
-function detectFramework(deps: Record<string, string>): string | null {
-  if (deps.next) return "Next.js";
-  if (deps["@sveltejs/kit"]) return "SvelteKit";
-  if (deps.react) return "React";
-  if (deps.vue) return "Vue";
-  if (deps["solid-js"]) return "SolidJS";
-  if (deps.astro) return "Astro";
-  if (deps.nuxt) return "Nuxt";
-  if (deps.express) return "Express.js";
-  if (deps.fastify) return "Fastify";
-  if (deps.hono) return "Hono";
-  if (deps["@nestjs/core"]) return "NestJS";
-  return null;
+function detectFrameworks(deps: Record<string, string>): string[] {
+  const found: string[] = [];
+  if (deps.next) found.push("Next.js");
+  if (deps["@sveltejs/kit"]) found.push("SvelteKit");
+  if (deps.react && !deps.next && !deps["@sveltejs/kit"]) found.push("React");
+  if (deps.vue) found.push("Vue");
+  if (deps["solid-js"]) found.push("SolidJS");
+  if (deps.astro) found.push("Astro");
+  if (deps.nuxt) found.push("Nuxt");
+  if (deps.express) found.push("Express.js");
+  if (deps.fastify) found.push("Fastify");
+  if (deps.hono) found.push("Hono");
+  if (deps.elysia) found.push("Elysia");
+  if (deps["@nestjs/core"]) found.push("NestJS");
+  return found;
+}
+
+async function collectAllDeps(root: string): Promise<{
+  deps: Record<string, string>;
+  rootPkg: { type?: string };
+}> {
+  const pkgPaths = await fg(["package.json", "apps/*/package.json", "packages/*/package.json"], {
+    cwd: root,
+    onlyFiles: true,
+    ignore: ["**/node_modules/**"],
+  });
+
+  const allDeps: Record<string, string> = {};
+  let rootPkg: { type?: string } = {};
+
+  for (const pkgPath of pkgPaths) {
+    try {
+      const raw = await readHead(join(root, pkgPath));
+      const pkg = JSON.parse(raw) as {
+        type?: string;
+        dependencies?: Record<string, string>;
+        devDependencies?: Record<string, string>;
+      };
+      Object.assign(allDeps, pkg.dependencies, pkg.devDependencies);
+      if (pkgPath === "package.json") rootPkg = pkg;
+    } catch {
+      // skip unreadable
+    }
+  }
+
+  return { deps: allDeps, rootPkg };
 }
 
 async function extractArchitectureContext(root: string): Promise<{ conventions: string[]; decisions: string[] }> {
@@ -156,19 +190,25 @@ async function extractArchitectureContext(root: string): Promise<{ conventions: 
   const decisions: string[] = [];
 
   try {
-    const raw = await readHead(join(root, "package.json"));
-    const pkg = JSON.parse(raw) as {
-      type?: string;
-      dependencies?: Record<string, string>;
-      devDependencies?: Record<string, string>;
-    };
-    const deps = { ...pkg.dependencies, ...pkg.devDependencies };
+    const { deps, rootPkg } = await collectAllDeps(root);
 
-    const framework = detectFramework(deps);
-    if (framework) decisions.push(`- ${framework} as the application framework.`);
+    // Monorepo detection
+    const turboJson = await readHead(join(root, "turbo.json"));
+    const bunLock = await readHead(join(root, "bun.lockb"));
+    const pnpmWorkspace = await readHead(join(root, "pnpm-workspace.yaml"));
 
-    if (deps.typescript) conventions.push("- TypeScript — strict mode checked on every build.");
-    if (pkg.type === "module") conventions.push(`- ESM modules (\`"type": "module"\` in package.json).`);
+    if (turboJson) conventions.push("- Turborepo monorepo — each workspace has its own package.json.");
+    if (bunLock) decisions.push("- Bun as the package manager and runtime.");
+    else if (pnpmWorkspace) decisions.push("- pnpm workspaces.");
+
+    // Frameworks (monorepos often have multiple)
+    const frameworks = detectFrameworks(deps);
+    if (frameworks.length > 0) {
+      decisions.push(`- ${frameworks.join(" + ")} as the application framework${frameworks.length > 1 ? "s" : ""}.`);
+    }
+
+    if (deps.typescript) conventions.push("- TypeScript throughout.");
+    if (rootPkg.type === "module") conventions.push(`- ESM modules (\`"type": "module"\` in package.json).`);
 
     if (deps["@biomejs/biome"]) {
       decisions.push("- Biome for linting and formatting — not ESLint or Prettier.");
@@ -181,6 +221,11 @@ async function extractArchitectureContext(root: string): Promise<{ conventions: 
     } else if (deps["@prisma/client"]) {
       decisions.push("- Prisma ORM for database access.");
     }
+
+    if (deps["better-auth"]) decisions.push("- Better-Auth for authentication.");
+    else if (deps["next-auth"] || deps["@auth/core"]) decisions.push("- Auth.js (NextAuth) for authentication.");
+
+    if (deps["@trpc/server"] || deps["@trpc/client"]) decisions.push("- tRPC for end-to-end type-safe APIs.");
 
     if (deps.vitest) {
       decisions.push("- Vitest as the test runner.");
@@ -198,6 +243,15 @@ async function extractSetupContext(root: string): Promise<{ conventions: string[
   const conventions: string[] = [];
   const decisions: string[] = [];
 
+  // Detect package manager from lock files
+  const bunLock = await readHead(join(root, "bun.lockb"));
+  const pnpmLock = await readHead(join(root, "pnpm-lock.yaml"));
+  const yarnLock = await readHead(join(root, "yarn.lock"));
+  if (bunLock) decisions.push("- Package manager: `bun`. Use `bun install` / `bun run <script>`.");
+  else if (pnpmLock) decisions.push("- Package manager: `pnpm`. Use `pnpm install` / `pnpm run <script>`.");
+  else if (yarnLock) decisions.push("- Package manager: `yarn`. Use `yarn` / `yarn <script>`.");
+  else decisions.push("- Package manager: `npm`. Use `npm install` / `npm run <script>`.");
+
   try {
     const raw = await readHead(join(root, "package.json"));
     const pkg = JSON.parse(raw) as { scripts?: Record<string, string> };
@@ -205,7 +259,7 @@ async function extractSetupContext(root: string): Promise<{ conventions: string[
     if (pkg.scripts) {
       const entries = Object.entries(pkg.scripts);
       if (entries.length > 0) {
-        conventions.push("- Available scripts:");
+        conventions.push("- Available scripts (run from root):");
         for (const [name, cmd] of entries.slice(0, 8)) {
           const shortCmd = cmd.length > 55 ? `${cmd.slice(0, 52)}...` : cmd;
           conventions.push(`  - \`${name}\`: \`${shortCmd}\``);
