@@ -58,6 +58,9 @@ async function callClaudeCli(prompt: string): Promise<AiEnrichResult> {
       timeout: 300_000,
     });
 
+    // Print a dot every 3s so the user knows it's working.
+    const ticker = setInterval(() => process.stdout.write("."), 3_000);
+
     let stdout = "";
     let stderr = "";
 
@@ -68,8 +71,14 @@ async function callClaudeCli(prompt: string): Promise<AiEnrichResult> {
       stderr += d.toString();
     });
 
-    proc.on("error", reject);
+    proc.on("error", (err) => {
+      clearInterval(ticker);
+      process.stdout.write("\n");
+      reject(err);
+    });
     proc.on("close", (code) => {
+      clearInterval(ticker);
+      process.stdout.write("\n");
       if (code !== 0) {
         reject(new Error(`claude exited with code ${code}: ${stderr.slice(0, 300)}`));
         return;
@@ -348,7 +357,7 @@ export async function enrichWithAI(
 
   if (choice === "claude-cli") {
     writeLine("");
-    writeLine("  Launching claude CLI...");
+    writeLine("  Launching claude CLI (30–60s)...");
     try {
       const result = await callClaudeCli(prompt);
       writeLine(`  Done — ${Object.keys(result).length} capsules enriched.`);
