@@ -17,7 +17,7 @@ describe("capsule cli", () => {
 
     output.length = 0;
     await runCli(["node", "capsule", "get", "api"], { root, writeLine });
-    expect(output.join("\n")).toContain("name: api");
+    expect(output.join("\n")).toContain('"name": "api"');
     expect(output.join("\n")).toContain("# API Capsule");
 
     output.length = 0;

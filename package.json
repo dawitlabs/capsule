@@ -1,21 +1,50 @@
 {
-  "name": "capsule",
+  "name": "capsulectx",
   "version": "0.0.0",
-  "private": true,
+  "private": false,
+  "description": "Markdown context packs that help coding agents reduce repeated repository-discovery tokens.",
+  "license": "MIT",
+  "author": "Dawit Worku",
   "type": "module",
   "bin": {
     "capsule": "./dist/cli.js"
   },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "build": "tsc",
     "dev": "tsx src/cli.ts",
+    "prepack": "npm run build",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
+  "keywords": [
+    "ai",
+    "agents",
+    "coding-agents",
+    "context",
+    "llm",
+    "tokens",
+    "cli",
+    "markdown"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Dawaman43/capsule.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Dawaman43/capsule/issues"
+  },
+  "homepage": "https://github.com/Dawaman43/capsule#readme",
+  "engines": {
+    "node": ">=20"
+  },
   "dependencies": {
     "commander": "^12.1.0",
-    "fast-glob": "^3.3.2",
-    "gray-matter": "^4.0.3"
+    "fast-glob": "^3.3.2"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

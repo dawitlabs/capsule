@@ -1,18 +1,22 @@
----
-name: setup
-description: 'Local setup, scripts, dependencies, and runtime configuration.'
-sources:
-  - package.json
-  - package-lock.json
-  - pnpm-workspace.yaml
-  - yarn.lock
-  - docker-compose.yml
-  - Dockerfile
-  - .env.example
-fingerprints:
-  package-lock.json: 'sha256:acad903a10bd70e5f936e27a814f049b2ac966c75d12d9a78cd5911753ba835c'
-  package.json: 'sha256:63582fb60feab22c480a28ae32173a6660a9b0605dd5a29902428b9efa5b2bc8'
-updated_at: '2026-06-20T13:42:12.869Z'
+---json
+{
+  "name": "setup",
+  "description": "Local setup, scripts, dependencies, and runtime configuration.",
+  "sources": [
+    "package.json",
+    "package-lock.json",
+    "pnpm-workspace.yaml",
+    "yarn.lock",
+    "docker-compose.yml",
+    "Dockerfile",
+    ".env.example"
+  ],
+  "fingerprints": {
+    "package-lock.json": "sha256:af2d3413fb5f9ab82bd00b3347363402b5d30b5b9249eea9f60d2062e40e9fc8",
+    "package.json": "sha256:57b54443aa29088e5b40738b791d8cbdccdd11b8b58cf887c492b34461611d75"
+  },
+  "updated_at": "2026-06-20T13:52:41.036Z"
+}
 ---
 # Setup Capsule
 

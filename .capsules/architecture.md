@@ -1,20 +1,24 @@
----
-name: architecture
-description: 'Repository structure, docs, and high-level project shape.'
-sources:
-  - README*
-  - docs/**
-  - package.json
-  - pyproject.toml
-  - go.mod
-  - Cargo.toml
-fingerprints:
-  README.md: 'sha256:577f2a22caa37047d820af19d26e58cc6129ea6b9dc0fa25a973030a24ec1917'
-  docs/agent-snippets.md: 'sha256:16b45fcca359eb612d65dafd426ee6e05794782e559cfa4668611294835419e4'
-  docs/superpowers/plans/2026-06-20-capsule-cli-v0.md: 'sha256:9a0343f6bf80a3e44117a3770f4852a845a040818819ea6e89f09a8e692954a1'
-  docs/superpowers/specs/2026-06-20-capsule-design.md: 'sha256:a53988525026dc9d7e0f696dd8ed48ac30a2f82d366174cbf2c11f49f973ac92'
-  package.json: 'sha256:63582fb60feab22c480a28ae32173a6660a9b0605dd5a29902428b9efa5b2bc8'
-updated_at: '2026-06-20T13:40:54.382Z'
+---json
+{
+  "name": "architecture",
+  "description": "Repository structure, docs, and high-level project shape.",
+  "sources": [
+    "README*",
+    "docs/**",
+    "package.json",
+    "pyproject.toml",
+    "go.mod",
+    "Cargo.toml"
+  ],
+  "fingerprints": {
+    "README.md": "sha256:f9b86d4e6878bfc5f0a027ae464043aaf33d5b7adb2f27a7429735d9aa871aaf",
+    "docs/agent-snippets.md": "sha256:16b45fcca359eb612d65dafd426ee6e05794782e559cfa4668611294835419e4",
+    "docs/superpowers/plans/2026-06-20-capsule-cli-v0.md": "sha256:9a0343f6bf80a3e44117a3770f4852a845a040818819ea6e89f09a8e692954a1",
+    "docs/superpowers/specs/2026-06-20-capsule-design.md": "sha256:a53988525026dc9d7e0f696dd8ed48ac30a2f82d366174cbf2c11f49f973ac92",
+    "package.json": "sha256:57b54443aa29088e5b40738b791d8cbdccdd11b8b58cf887c492b34461611d75"
+  },
+  "updated_at": "2026-06-20T13:52:40.997Z"
+}
 ---
 # Architecture Capsule
 
