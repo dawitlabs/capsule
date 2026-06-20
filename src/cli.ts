@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { readFileSync } from "node:fs";
-import { stat, writeFile } from "node:fs/promises";
+import { readFile, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Command } from "commander";
@@ -79,6 +79,11 @@ export function createProgram(runtime: CliRuntime): Command {
 
       await writeFile(join(runtime.root, ".capsules", "index.md"), renderIndex(groups), "utf8");
       runtime.writeLine(`Created .capsules with ${groups.length} capsules`);
+
+      const patched = await patchAgentFiles(runtime.root);
+      for (const result of patched) {
+        runtime.writeLine(result);
+      }
     });
 
   program
@@ -165,6 +170,53 @@ export function createProgram(runtime: CliRuntime): Command {
     });
 
   return program;
+}
+
+const AGENT_FILES = ["CLAUDE.md", "AGENTS.md", ".cursorrules", ".windsurfrules"];
+
+const CAPSULE_MARKER_START = "<!-- capsule -->";
+const CAPSULE_MARKER_END = "<!-- /capsule -->";
+
+const CAPSULE_SNIPPET = `${CAPSULE_MARKER_START}
+## Capsule Context
+
+Before working in this repo:
+
+1. Read \`.capsules/index.md\`.
+2. Read the capsule matching the task area.
+3. Run \`capsule stale <name>\` to check if sources changed.
+4. If stale, inspect the changed files before editing.
+5. Update capsules when durable project knowledge changes.
+${CAPSULE_MARKER_END}`;
+
+async function patchAgentFiles(root: string): Promise<string[]> {
+  const results: string[] = [];
+
+  for (const filename of AGENT_FILES) {
+    const path = join(root, filename);
+    let existing = "";
+    let existed = false;
+
+    try {
+      existing = await readFile(path, "utf8");
+      existed = true;
+    } catch {
+      // file doesn't exist yet — will create it
+    }
+
+    if (existing.includes(CAPSULE_MARKER_START)) {
+      // already patched — skip silently
+      continue;
+    }
+
+    const content = existed ? `${existing.trimEnd()}\n\n${CAPSULE_SNIPPET}\n` : `${CAPSULE_SNIPPET}\n`;
+    await writeFile(path, content, "utf8");
+    results.push(
+      existed ? `Updated ${filename} with capsule instructions` : `Created ${filename} with capsule instructions`,
+    );
+  }
+
+  return results;
 }
 
 async function writeGroupCapsule(root: string, group: SourceGroup): Promise<void> {
