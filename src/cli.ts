@@ -4,6 +4,7 @@ import { readFile, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Command } from "commander";
+import { enrichWithAI, getEnrichOptions, promptAiSelection } from "./ai-enrich.js";
 import { extractGroupContent } from "./capsule-content.js";
 import { readCapsule, writeCapsule } from "./capsule-format.js";
 import { mergeCapsuleBody } from "./capsule-merge.js";
@@ -74,12 +75,17 @@ export function createProgram(runtime: CliRuntime): Command {
       runtime.writeLine(renderBanner(pkg.version));
       const groups = await scanRepository(runtime.root);
 
+      // Optional AI enrichment — show selection if API keys are present.
+      const enrichOptions = await getEnrichOptions(runtime.root);
+      const aiChoice = await promptAiSelection(enrichOptions, runtime.writeLine);
+      const aiContent = aiChoice ? await enrichWithAI(aiChoice, runtime.root, groups, runtime.writeLine) : null;
+
       for (const group of groups) {
-        await writeGroupCapsule(runtime.root, group);
+        await writeGroupCapsule(runtime.root, group, aiContent?.[group.name] ?? undefined);
       }
 
       await writeFile(join(runtime.root, ".capsules", "index.md"), renderIndex(groups), "utf8");
-      runtime.writeLine(`Created .capsules with ${groups.length} capsules`);
+      runtime.writeLine(`\nCreated .capsules with ${groups.length} capsules`);
 
       const patched = await patchAgentFiles(runtime.root);
       for (const result of patched) {
@@ -220,11 +226,19 @@ async function patchAgentFiles(root: string): Promise<string[]> {
   return results;
 }
 
-async function writeGroupCapsule(root: string, group: SourceGroup): Promise<void> {
+async function writeGroupCapsule(
+  root: string,
+  group: SourceGroup,
+  aiOverride?: { conventions: string[]; decisions: string[] },
+): Promise<void> {
   const config = await loadConfig(root);
   const fingerprints = await computeFingerprints(root, group.sources, config.ignore);
 
   const content = await extractGroupContent(root, group.name, group.files);
+  if (aiOverride) {
+    if (aiOverride.conventions.length > 0) content.conventions = aiOverride.conventions;
+    if (aiOverride.decisions.length > 0) content.decisions = aiOverride.decisions;
+  }
   let body = renderCapsuleBody(group, content);
 
   // Preserve human-authored sections from an existing capsule.
