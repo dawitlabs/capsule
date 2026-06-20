@@ -1,6 +1,6 @@
 {
   "name": "capsulectx",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "private": false,
   "description": "Markdown context packs that help coding agents reduce repeated repository-discovery tokens.",
   "license": "MIT",
