@@ -9,7 +9,7 @@ import { mergeCapsuleBody } from "./capsule-merge.js";
 import { estimateCapsuleSavings } from "./estimate.js";
 import { compareFingerprints, computeFingerprints } from "./fingerprint.js";
 import { loadConfig, scanRepository } from "./repo-scan.js";
-import { renderCapsuleBody, renderIndex } from "./templates.js";
+import { renderBanner, renderCapsuleBody, renderIndex } from "./templates.js";
 import type { SourceGroup, StaleResult } from "./types.js";
 
 const pkg = JSON.parse(readFileSync(join(fileURLToPath(import.meta.url), "../../package.json"), "utf8")) as {
@@ -29,8 +29,14 @@ export async function runCli(argv = process.argv, runtime?: Partial<CliRuntime>)
     await program.parseAsync(argv);
   } catch (error: unknown) {
     // Re-throw commander's own exits (--help, --version) silently.
-    if (error instanceof Error && "code" in error && (error as NodeJS.ErrnoException).code === "commander.helpDisplayed") return;
-    if (error instanceof Error && "code" in error && (error as NodeJS.ErrnoException).code === "commander.version") return;
+    if (
+      error instanceof Error &&
+      "code" in error &&
+      (error as NodeJS.ErrnoException).code === "commander.helpDisplayed"
+    )
+      return;
+    if (error instanceof Error && "code" in error && (error as NodeJS.ErrnoException).code === "commander.version")
+      return;
     throw error;
   }
 }
@@ -64,6 +70,7 @@ export function createProgram(runtime: CliRuntime): Command {
     .command("init")
     .description("Create .capsules starter context packs")
     .action(async () => {
+      runtime.writeLine(renderBanner(pkg.version));
       const groups = await scanRepository(runtime.root);
 
       for (const group of groups) {

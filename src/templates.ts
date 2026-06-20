@@ -1,5 +1,18 @@
 import type { SourceGroup } from "./types.js";
 
+export function renderBanner(version: string): string {
+  return [
+    "",
+    "   ___  __ _ _ __  ___ _   _| | ___ ",
+    "  / __/ _` | '_ \\/ __| | | | |/ _ \\",
+    " | (_| (_| | |_) \\__ \\ |_| | |  __/",
+    "  \\___\\__,_| .__/|___/\\__,_|_|\\___| ",
+    "           |_|                        ",
+    `                              v${version}`,
+    "",
+  ].join("\n");
+}
+
 export function renderCapsuleBody(group: SourceGroup): string {
   const title = capitalize(group.name);
   const keyFiles = group.files.length
