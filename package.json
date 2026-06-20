@@ -1,22 +1,23 @@
 {
   "name": "capsulectx",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": false,
   "description": "Markdown context packs that help coding agents reduce repeated repository-discovery tokens.",
   "license": "MIT",
   "author": "Dawit Worku",
   "type": "module",
   "bin": {
-    "capsule": "./dist/cli.js",
-    "capsulectx": "./dist/cli.js"
+    "capsule": "./bin/capsule.js",
+    "capsulectx": "./bin/capsule.js"
   },
   "files": [
+    "bin",
     "dist",
     "README.md",
     "LICENSE"
   ],
   "scripts": {
-    "build": "tsc && chmod +x dist/cli.js",
+    "build": "tsc",
     "demo": "node scripts/build-demo.mjs",
     "dev": "tsx src/cli.ts",
     "format": "biome format --write .",
