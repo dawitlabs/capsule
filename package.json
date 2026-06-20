@@ -16,7 +16,7 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && chmod +x dist/cli.js",
     "demo": "node scripts/build-demo.mjs",
     "dev": "tsx src/cli.ts",
     "format": "biome format --write .",
