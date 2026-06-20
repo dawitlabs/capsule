@@ -1,3 +1,4 @@
+import { execFile, spawn } from "node:child_process";
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import * as rl from "node:readline/promises";
@@ -34,41 +35,101 @@ async function detectProjectAiPreference(root: string): Promise<"claude" | "open
 }
 
 export interface EnrichOption {
-  id: "claude" | "openai" | "prompt";
+  id: "claude-cli" | "claude" | "openai" | "prompt";
   label: string;
   available: boolean;
 }
 
+const CLI_TOOLS: Array<{ cmd: string; id: "claude-cli"; label: string }> = [
+  { cmd: "claude", id: "claude-cli", label: "Claude Code  (claude CLI — uses your existing auth, no API key needed)" },
+];
+
+async function detectInstalledCli(name: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    const which = process.platform === "win32" ? "where" : "which";
+    execFile(which, [name], (err) => resolve(err === null));
+  });
+}
+
+async function callClaudeCli(prompt: string): Promise<AiEnrichResult> {
+  return new Promise((resolve, reject) => {
+    const proc = spawn("claude", ["--print"], {
+      stdio: ["pipe", "pipe", "pipe"],
+      timeout: 300_000,
+    });
+
+    let stdout = "";
+    let stderr = "";
+
+    proc.stdout.on("data", (d: Buffer) => {
+      stdout += d.toString();
+    });
+    proc.stderr.on("data", (d: Buffer) => {
+      stderr += d.toString();
+    });
+
+    proc.on("error", reject);
+    proc.on("close", (code) => {
+      if (code !== 0) {
+        reject(new Error(`claude exited with code ${code}: ${stderr.slice(0, 300)}`));
+        return;
+      }
+      try {
+        resolve(parseAiResponse(stdout));
+      } catch {
+        reject(new Error(`Could not parse claude CLI output as JSON:\n${stdout.slice(0, 400)}`));
+      }
+    });
+
+    proc.stdin.write(prompt);
+    proc.stdin.end();
+  });
+}
+
 export async function getEnrichOptions(root: string): Promise<EnrichOption[]> {
-  const preference = await detectProjectAiPreference(root);
+  const [preference, ...cliPresent] = await Promise.all([
+    detectProjectAiPreference(root),
+    ...CLI_TOOLS.map((t) => detectInstalledCli(t.cmd)),
+  ]);
 
-  const options: EnrichOption[] = [
-    {
-      id: "claude",
-      label: process.env.ANTHROPIC_API_KEY
-        ? "Claude API  (ANTHROPIC_API_KEY ✓)"
-        : "Claude API  (ANTHROPIC_API_KEY not set)",
-      available: Boolean(process.env.ANTHROPIC_API_KEY),
-    },
-    {
-      id: "openai",
-      label: process.env.OPENAI_API_KEY
-        ? "OpenAI GPT-4o API  (OPENAI_API_KEY ✓)"
-        : "OpenAI GPT-4o API  (OPENAI_API_KEY not set)",
-      available: Boolean(process.env.OPENAI_API_KEY),
-    },
-    {
-      // Always available — works with Claude.ai, ChatGPT, Cursor, Windsurf, Copilot, any browser session.
-      id: "prompt",
-      label: "Generate prompt  (paste into Claude.ai / ChatGPT / Cursor / any AI)",
-      available: true,
-    },
-  ];
+  const options: EnrichOption[] = [];
 
-  // Put the project's preferred API-based AI first.
-  if (preference === "openai") {
-    const [claude, openai, ...rest] = options;
-    return [openai, claude, ...rest];
+  // CLI tools come first — no API key required.
+  for (let i = 0; i < CLI_TOOLS.length; i++) {
+    const tool = CLI_TOOLS[i];
+    if (tool && cliPresent[i]) {
+      options.push({ id: tool.id, label: tool.label, available: true });
+    }
+  }
+
+  // API-based options.
+  options.push({
+    id: "claude",
+    label: process.env.ANTHROPIC_API_KEY
+      ? "Claude API  (ANTHROPIC_API_KEY ✓)"
+      : "Claude API  (ANTHROPIC_API_KEY not set)",
+    available: Boolean(process.env.ANTHROPIC_API_KEY),
+  });
+  options.push({
+    id: "openai",
+    label: process.env.OPENAI_API_KEY
+      ? "OpenAI GPT-4o API  (OPENAI_API_KEY ✓)"
+      : "OpenAI GPT-4o API  (OPENAI_API_KEY not set)",
+    available: Boolean(process.env.OPENAI_API_KEY),
+  });
+
+  // Always available — works with any browser AI session.
+  options.push({
+    id: "prompt",
+    label: "Generate prompt  (paste into Claude.ai / ChatGPT / Cursor / any AI)",
+    available: true,
+  });
+
+  // If project prefers OpenAI and no CLI is installed, put OpenAI API before Claude API.
+  if (preference === "openai" && !cliPresent[0]) {
+    const ci = options.findIndex((o) => o.id === "claude");
+    const oi = options.findIndex((o) => o.id === "openai");
+    if (ci >= 0 && oi >= 0) [options[ci], options[oi]] = [options[oi] as EnrichOption, options[ci] as EnrichOption];
   }
 
   return options;
@@ -77,15 +138,23 @@ export async function getEnrichOptions(root: string): Promise<EnrichOption[]> {
 export async function promptAiSelection(
   options: EnrichOption[],
   writeLine: (s: string) => void,
-): Promise<"claude" | "openai" | "prompt" | null> {
+): Promise<"claude-cli" | "claude" | "openai" | "prompt" | null> {
   if (!process.stdin.isTTY || !process.stdout.isTTY) return null;
 
   writeLine("");
   writeLine("Enrich capsules with AI? (much richer content than static analysis)");
   writeLine("");
+
+  let displayIndex = 0;
+  const indexMap: number[] = []; // maps display number → options index
   options.forEach((o, i) => {
-    const marker = o.available ? `  ${i + 1}.` : "  -";
-    writeLine(`${marker} ${o.label}`);
+    if (o.available) {
+      displayIndex++;
+      indexMap.push(i);
+      writeLine(`  ${displayIndex}. ${o.label}`);
+    } else {
+      writeLine(`  -  ${o.label}`);
+    }
   });
   writeLine("  0. Skip — use static analysis only");
   writeLine("");
@@ -101,12 +170,10 @@ export async function promptAiSelection(
   const n = Number.parseInt(answer.trim() || "0", 10);
   if (n === 0 || Number.isNaN(n)) return null;
 
-  const choice = options[n - 1];
-  if (!choice) return null;
-  if (!choice.available) {
-    writeLine(`  Set ${choice.id === "openai" ? "OPENAI_API_KEY" : "ANTHROPIC_API_KEY"} to use this option.`);
-    return null;
-  }
+  const optionIndex = indexMap[n - 1];
+  if (optionIndex === undefined) return null;
+  const choice = options[optionIndex];
+  if (!choice?.available) return null;
   return choice.id;
 }
 
@@ -257,7 +324,7 @@ async function callOpenAI(prompt: string): Promise<AiEnrichResult> {
 }
 
 export async function enrichWithAI(
-  choice: "claude" | "openai" | "prompt",
+  choice: "claude-cli" | "claude" | "openai" | "prompt",
   root: string,
   groups: SourceGroup[],
   writeLine: (s: string) => void,
@@ -277,6 +344,20 @@ export async function enrichWithAI(
     writeLine("     (then paste the JSON and press Ctrl-D)");
     writeLine("");
     return null;
+  }
+
+  if (choice === "claude-cli") {
+    writeLine("");
+    writeLine("  Launching claude CLI...");
+    try {
+      const result = await callClaudeCli(prompt);
+      writeLine(`  Done — ${Object.keys(result).length} capsules enriched.`);
+      return result;
+    } catch (err) {
+      writeLine(`  claude CLI failed: ${err instanceof Error ? err.message : String(err)}`);
+      writeLine("  Falling back to static analysis.");
+      return null;
+    }
   }
 
   writeLine("");
