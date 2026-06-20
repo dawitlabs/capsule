@@ -25,13 +25,40 @@ export async function runCli(argv = process.argv, runtime?: Partial<CliRuntime>)
   const root = runtime?.root ?? process.cwd();
   const writeLine = runtime?.writeLine ?? console.log;
   const program = createProgram({ root, writeLine });
-  await program.parseAsync(argv);
+  try {
+    await program.parseAsync(argv);
+  } catch (error: unknown) {
+    // Re-throw commander's own exits (--help, --version) silently.
+    if (error instanceof Error && "code" in error && (error as NodeJS.ErrnoException).code === "commander.helpDisplayed") return;
+    if (error instanceof Error && "code" in error && (error as NodeJS.ErrnoException).code === "commander.version") return;
+    throw error;
+  }
+}
+
+function friendlyError(error: unknown, root: string): string {
+  const msg = error instanceof Error ? error.message : String(error);
+  if (msg.includes("ENOENT") && msg.includes(".capsules")) {
+    return `No .capsules directory found in ${root}\nRun: capsule init`;
+  }
+  return msg;
 }
 
 export function createProgram(runtime: CliRuntime): Command {
   const program = new Command();
 
-  program.name("capsule").description("Markdown context packs for coding agents").version(pkg.version);
+  program
+    .name("capsule")
+    .description("Markdown context packs for coding agents")
+    .version(pkg.version)
+    .exitOverride()
+    .configureOutput({
+      writeErr: (str) => process.stderr.write(str),
+    });
+
+  program.on("command:*", () => {
+    process.stderr.write(`Unknown command: ${program.args.join(" ")}\n`);
+    program.help();
+  });
 
   program
     .command("init")
@@ -182,8 +209,9 @@ function printStale(result: StaleResult, writeLine: (line: string) => void): voi
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+  const root = process.cwd();
   runCli().catch((error: unknown) => {
-    console.error(error instanceof Error ? error.message : String(error));
+    process.stderr.write(`${friendlyError(error, root)}\n`);
     process.exitCode = 1;
   });
 }
