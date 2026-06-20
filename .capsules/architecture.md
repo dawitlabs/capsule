@@ -15,9 +15,9 @@
     "docs/agent-snippets.md": "sha256:16b45fcca359eb612d65dafd426ee6e05794782e559cfa4668611294835419e4",
     "docs/superpowers/plans/2026-06-20-capsule-cli-v0.md": "sha256:9a0343f6bf80a3e44117a3770f4852a845a040818819ea6e89f09a8e692954a1",
     "docs/superpowers/specs/2026-06-20-capsule-design.md": "sha256:a53988525026dc9d7e0f696dd8ed48ac30a2f82d366174cbf2c11f49f973ac92",
-    "package.json": "sha256:57b54443aa29088e5b40738b791d8cbdccdd11b8b58cf887c492b34461611d75"
+    "package.json": "sha256:e207eb78937d1dcd6b89322063672dc6fc27166b3105c8761d1679cf3f8effa7"
   },
-  "updated_at": "2026-06-20T13:52:40.997Z"
+  "updated_at": "2026-06-20T13:56:50.016Z"
 }
 ---
 # Architecture Capsule

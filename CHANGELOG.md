@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.0.0
+## 0.1.0
 
 - Initial local CLI.
 - Added `.capsules/` Markdown context packs.
