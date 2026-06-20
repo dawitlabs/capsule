@@ -13,9 +13,9 @@
   ],
   "fingerprints": {
     "package-lock.json": "sha256:113b85cff7877f10a86b03f6222c2713565f5d86b0f163f8d5bb5eaf6f93e487",
-    "package.json": "sha256:e207eb78937d1dcd6b89322063672dc6fc27166b3105c8761d1679cf3f8effa7"
+    "package.json": "sha256:1ec5ebdd4d70ad47dd53181beeb3e832a90c92fea06630ed6bcc7620e24a2851"
   },
-  "updated_at": "2026-06-20T13:56:58.863Z"
+  "updated_at": "2026-06-20T13:59:24.369Z"
 }
 ---
 # Setup Capsule

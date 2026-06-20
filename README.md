@@ -118,7 +118,7 @@ Capsule is designed to work with any coding agent that can read files:
 ## Install For Local Development
 
 ```bash
-git clone https://github.com/Dawaman43/capsule.git
+git clone https://github.com/dawitlabs/capsule.git
 cd capsule
 npm install
 npm run build

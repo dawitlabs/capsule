@@ -33,12 +33,12 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Dawaman43/capsule.git"
+    "url": "git+https://github.com/dawitlabs/capsule.git"
   },
   "bugs": {
-    "url": "https://github.com/Dawaman43/capsule/issues"
+    "url": "https://github.com/dawitlabs/capsule/issues"
   },
-  "homepage": "https://github.com/Dawaman43/capsule#readme",
+  "homepage": "https://github.com/dawitlabs/capsule#readme",
   "engines": {
     "node": ">=20"
   },
