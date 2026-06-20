@@ -21,13 +21,45 @@ MCP gives agents tools. Skills give agents procedures. Capsules give agents comp
 
 Large repositories make coding agents burn tokens rediscovering the same files, decisions, conventions, and setup details over and over. Capsule targets a **50–70% reduction in repeated repository-discovery context** for large, multi-session agent work.
 
+## Install
+
+**No install required — run directly with npx (always gets the latest version):**
+
+```bash
+npx capsulectx init
+```
+
+**Or install globally with your package manager:**
+
+```bash
+# npm
+npm install -g capsulectx
+
+# pnpm
+pnpm add -g capsulectx
+
+# yarn
+yarn global add capsulectx
+
+# bun
+bun add -g capsulectx
+```
+
+**Keep it up to date:**
+
+```bash
+npm install -g capsulectx --prefer-online
+```
+
+> **Tip:** `npx` is the easiest option — it always runs the latest published version with no manual update step.
+
 ## Quickstart
 
 ```bash
 npx capsulectx init
 ```
 
-Capsule scans your repo and creates:
+Capsule scans your repo, optionally enriches capsules with AI (using your installed Claude CLI, API keys, or a generated prompt for any browser-based AI), and creates:
 
 ```
 .capsules/
@@ -74,10 +106,12 @@ Agents read `.capsules/index.md`, choose the relevant capsule, check staleness, 
 
 | Command | What it does |
 |---|---|
-| `capsule init` | Scan repo and create all `.capsules/*.md` files |
-| `capsule scan` | Print detected source groups without writing |
-| `capsule write <name>` | Refresh one capsule (preserves your edits) |
+| `capsule init` | Scan repo, run AI enrichment (optional), write all capsules |
+| `capsule enrich` | Re-run AI enrichment on existing capsules |
+| `capsule apply` | Apply AI-generated JSON to capsule Conventions and Decisions |
+| `capsule write <name>` | Refresh one capsule from source (preserves your edits) |
 | `capsule get <name>` | Print one capsule to stdout |
+| `capsule scan` | Print detected source groups without writing |
 | `capsule stale [name]` | Check which source files changed since last write |
 | `capsule estimate <name>` | Show estimated token savings for one capsule |
 
@@ -149,21 +183,21 @@ Requires `rsvg-convert` (`librsvg` / `librsvg2-tools`) and `ffmpeg`. The script 
 
 ## Status
 
-Capsule is early — v0, local-only, no paid LLM calls.
+Capsule is early but functional. Current capabilities:
 
-**In v0.1:**
-- local CLI, language-agnostic repo scanning
-- Markdown context packs with source fingerprints
-- stale detection, token savings estimation
-- write-safe re-generation (human edits preserved)
-- custom group config via `.capsules/config.json`
+- Language-agnostic repo scanning with monorepo support (Turborepo, pnpm workspaces)
+- Static analysis: framework detection, table/model extraction, route detection, env vars
+- AI enrichment on init — launches your installed Claude CLI, calls Claude/OpenAI API, or generates a prompt for any browser-based AI (Claude.ai, ChatGPT, Cursor, Windsurf)
+- Write-safe re-generation: human edits to Conventions and Decisions are preserved on refresh
+- Stale detection and token savings estimation
+- Custom group config via `.capsules/config.json`
+- Auto-patches `CLAUDE.md`, `AGENTS.md`, `.cursorrules`, `.windsurfrules` with capsule instructions
 
 **Roadmap:**
-- `capsule prompt claude|codex|cursor` — inject capsule into agent context directly
-- smarter `write` that diffs source changes and suggests updates
-- better source grouping for monorepos
-- before/after token reports for real agent sessions
+- `capsule enrich` — re-enrich existing capsules without re-initialising
+- smarter `write` that diffs source changes and suggests targeted updates
 - GitHub Action for stale capsule checks in CI
+- before/after token reports for real agent sessions
 - public capsule format spec
 
 ## Install for Local Development
