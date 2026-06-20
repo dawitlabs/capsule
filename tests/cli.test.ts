@@ -44,16 +44,17 @@ describe("capsule cli", () => {
     const writeLine = (line: string) => line;
     await runCli(["node", "capsule", "init"], { root, writeLine });
 
-    // Simulate human edits to the capsule
+    // Simulate human edits to the capsule using section-boundary replacement
+    // so the test is not coupled to specific placeholder text.
     const capsulePath = join(root, ".capsules/api.md");
     let capsule = await readFile(capsulePath, "utf8");
     capsule = capsule.replace(
-      "- Record stable decisions here so future agents do not rediscover them.",
-      "- Always validate with zod at the route boundary.",
+      /(## Decisions\n\n)[\s\S]*?(\n## )/,
+      "$1- Always validate with zod at the route boundary.\n$2",
     );
     capsule = capsule.replace(
-      "- Keep this section updated when durable project conventions are discovered.",
-      "- Use snake_case for JSON response fields.",
+      /(## Conventions\n\n)[\s\S]*?(\n## )/,
+      "$1- Use snake_case for JSON response fields.\n$2",
     );
     await writeFile(capsulePath, capsule, "utf8");
 

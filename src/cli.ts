@@ -4,6 +4,7 @@ import { readFile, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Command } from "commander";
+import { extractGroupContent } from "./capsule-content.js";
 import { readCapsule, writeCapsule } from "./capsule-format.js";
 import { mergeCapsuleBody } from "./capsule-merge.js";
 import { estimateCapsuleSavings } from "./estimate.js";
@@ -223,7 +224,8 @@ async function writeGroupCapsule(root: string, group: SourceGroup): Promise<void
   const config = await loadConfig(root);
   const fingerprints = await computeFingerprints(root, group.sources, config.ignore);
 
-  let body = renderCapsuleBody(group);
+  const content = await extractGroupContent(root, group.name, group.files);
+  let body = renderCapsuleBody(group, content);
 
   // Preserve human-authored sections from an existing capsule.
   try {

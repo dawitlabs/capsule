@@ -1,3 +1,4 @@
+import type { ExtractedContent } from "./capsule-content.js";
 import type { SourceGroup } from "./types.js";
 
 export function renderBanner(version: string): string {
@@ -13,11 +14,22 @@ export function renderBanner(version: string): string {
   ].join("\n");
 }
 
-export function renderCapsuleBody(group: SourceGroup): string {
+export function renderCapsuleBody(group: SourceGroup, content?: ExtractedContent): string {
   const title = capitalize(group.name);
-  const keyFiles = group.files.length
-    ? group.files.map((file) => `- \`${file}\`: source file matched by this capsule.`).join("\n")
-    : "- No files matched yet.";
+
+  const keyFilesSection = content?.keyFiles?.length
+    ? content.keyFiles.join("\n")
+    : group.files.length
+      ? group.files.map((f) => `- \`${f}\``).join("\n")
+      : "- No files matched yet.";
+
+  const conventionsSection = content?.conventions?.length
+    ? content.conventions.join("\n")
+    : "- Add durable coding conventions here as you discover them.";
+
+  const decisionsSection = content?.decisions?.length
+    ? content.decisions.join("\n")
+    : "- Add architectural decisions here so agents don't rediscover them.";
 
   return `# ${title} Capsule
 
@@ -27,15 +39,15 @@ ${group.description}
 
 ## Key Files
 
-${keyFiles}
+${keyFilesSection}
 
 ## Conventions
 
-- Keep this section updated when durable project conventions are discovered.
+${conventionsSection}
 
 ## Decisions
 
-- Record stable decisions here so future agents do not rediscover them.
+${decisionsSection}
 
 ## Agent Hints
 
