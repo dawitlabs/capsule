@@ -12,7 +12,7 @@
   "fingerprints": {
     "tests/capsule-format.test.ts": "sha256:84ede704e86d07eec68a71b85ad4e4e34c58c2b74eaa9103601ac6e3937ac54a",
     "tests/capsule-merge.test.ts": "sha256:3ea9b22ff36ed98754942ae7a990042ab6c8979b004609e4fa6c6dcddb7dd806",
-    "tests/cli.test.ts": "sha256:3f0f4b5972f585a534ceea9e7de74a2b2f4665eb080f75a5a9af44247347167a",
+    "tests/cli.test.ts": "sha256:c74b117e9f0741725e222a49bd29e8d84d438a95f2f4e90263ccad0d685815fa",
     "tests/estimate.test.ts": "sha256:8dc82add962aecb6d330d5477134cfe123e4d9022c614cf6af12b2615fa7f2ff",
     "tests/fingerprint.test.ts": "sha256:ac224581259212e5cf77f2875114bcb86c87747462d01e9f432428c2409171da",
     "tests/fixtures/sample-repo/README.md": "sha256:504c93c0602db99e83b1f46edb699375a33b3018c0a4f8b7c707a3a470539b31",
@@ -23,7 +23,7 @@
     "tests/fixtures/sample-repo/tests/users.test.ts": "sha256:714024ded73b57beac0ca95dc36011c3e86823027c16845c467ba5d9fb789a96",
     "tests/repo-scan.test.ts": "sha256:df769a1d85b7d9cf9be184da014ec7c21b66ba403dd63e944e9b6c1e875448e1"
   },
-  "updated_at": "2026-06-20T14:11:18.490Z"
+  "updated_at": "2026-06-20T15:21:00.504Z"
 }
 ---
 # Testing Capsule
@@ -34,18 +34,18 @@ Automated tests, fixtures, mocks, and quality gates.
 
 ## Key Files
 
-- `tests/capsule-format.test.ts`: source file matched by this capsule.
-- `tests/capsule-merge.test.ts`: source file matched by this capsule.
-- `tests/cli.test.ts`: source file matched by this capsule.
-- `tests/estimate.test.ts`: source file matched by this capsule.
-- `tests/fingerprint.test.ts`: source file matched by this capsule.
-- `tests/fixtures/sample-repo/README.md`: source file matched by this capsule.
-- `tests/fixtures/sample-repo/package.json`: source file matched by this capsule.
-- `tests/fixtures/sample-repo/src/api/users.ts`: source file matched by this capsule.
-- `tests/fixtures/sample-repo/src/components/button.tsx`: source file matched by this capsule.
-- `tests/fixtures/sample-repo/src/db/schema.ts`: source file matched by this capsule.
-- `tests/fixtures/sample-repo/tests/users.test.ts`: source file matched by this capsule.
-- `tests/repo-scan.test.ts`: source file matched by this capsule.
+- `tests/capsule-format.test.ts`: source module.
+- `tests/capsule-merge.test.ts`: source module.
+- `tests/cli.test.ts`: source module.
+- `tests/estimate.test.ts`: source module.
+- `tests/fingerprint.test.ts`: source module.
+- `tests/fixtures/sample-repo/README.md`: project documentation.
+- `tests/fixtures/sample-repo/package.json`: project manifest.
+- `tests/fixtures/sample-repo/src/api/users.ts`: exports `users`.
+- `tests/fixtures/sample-repo/src/components/button.tsx`: exports `Button`.
+- `tests/fixtures/sample-repo/src/db/schema.ts`: exports `schema`.
+- `tests/fixtures/sample-repo/tests/users.test.ts`: exports `sampleTestFile`.
+- `tests/repo-scan.test.ts`: source module.
 
 ## Conventions
 

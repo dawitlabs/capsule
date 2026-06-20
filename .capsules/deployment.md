@@ -24,7 +24,7 @@ Deployment, CI, hosting, containers, and production runtime config.
 
 ## Key Files
 
-- `.github/workflows/ci.yml`: source file matched by this capsule.
+- `.github/workflows/ci.yml`: source module.
 
 ## Conventions
 

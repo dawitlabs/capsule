@@ -13,9 +13,9 @@
   ],
   "fingerprints": {
     "package-lock.json": "sha256:2c7a5ccd781e4474f467fed4f67d37c000f99de310b2e49d8655931fe7ddf712",
-    "package.json": "sha256:b0563da9be4ace6f4d22fcd75fd558427f4096f0ae3a1052f374ef97e7f33d56"
+    "package.json": "sha256:c007314a370b68165ee174b31dd4e6f1917d5dedbe7cddaa6296e05f8677b700"
   },
-  "updated_at": "2026-06-20T14:09:21.217Z"
+  "updated_at": "2026-06-20T15:09:15.602Z"
 }
 ---
 # Setup Capsule
@@ -26,8 +26,8 @@ Local setup, scripts, dependencies, and runtime configuration.
 
 ## Key Files
 
-- `package-lock.json`: source file matched by this capsule.
-- `package.json`: source file matched by this capsule.
+- `package-lock.json`: source module.
+- `package.json`: project manifest — Markdown context packs that help coding agents reduce repeated repository-discovery tokens..
 
 ## Conventions
 
