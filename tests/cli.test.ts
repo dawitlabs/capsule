@@ -29,6 +29,7 @@ describe("capsule cli", () => {
     await runCli(["node", "capsule", "stale", "api"], { root, writeLine });
     expect(output.join("\n")).toContain("STALE api");
     expect(output.join("\n")).toContain("changed: src/api/users.ts");
+    expect(output.join("\n")).toContain("stale tokens:");
 
     output.length = 0;
     await runCli(["node", "capsule", "estimate", "api"], { root, writeLine });

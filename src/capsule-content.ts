@@ -1,9 +1,11 @@
 import { readFile } from "node:fs/promises";
-import { basename, join } from "node:path";
+import { basename, extname, join } from "node:path";
 import fg from "fast-glob";
+import { extractExports, formatSignatures } from "./extract-ts.js";
 
 export interface ExtractedContent {
   keyFiles: string[];
+  apiSurface: string[];
   conventions: string[];
   decisions: string[];
 }
@@ -94,12 +96,11 @@ function describeFile(filePath: string, content: string): string {
   const name = basename(filePath);
 
   if (name === "package.json") {
-    try {
-      const pkg = JSON.parse(content) as { description?: string };
-      return `project manifest${pkg.description ? ` — ${pkg.description}` : ""}`;
-    } catch {
-      return "project manifest";
-    }
+    return describePackageJson(content);
+  }
+
+  if (name === "tsconfig.json" || name === "tsconfig.base.json") {
+    return describeTsConfig(content);
   }
 
   if (name === "README.md" || name === "readme.md") {
@@ -127,6 +128,83 @@ function describeFile(filePath: string, content: string): string {
   return "source module";
 }
 
+function describePackageJson(content: string): string {
+  try {
+    const pkg = JSON.parse(content) as {
+      description?: string;
+      type?: string;
+      engines?: Record<string, string>;
+      bin?: Record<string, string> | string;
+      scripts?: Record<string, string>;
+      dependencies?: Record<string, string>;
+    };
+    const parts: string[] = [];
+
+    if (pkg.description) parts.push(pkg.description);
+
+    const runtime: string[] = [];
+    if (pkg.engines) {
+      for (const [eng, ver] of Object.entries(pkg.engines).slice(0, 2)) {
+        runtime.push(`${eng} ${ver}`);
+      }
+    }
+    if (pkg.type === "module") runtime.push("ESM");
+    if (runtime.length > 0) parts.push(runtime.join(", "));
+
+    if (pkg.bin) {
+      const binNames = typeof pkg.bin === "string" ? ["cli"] : Object.keys(pkg.bin);
+      parts.push(`bin: ${binNames.join(", ")}`);
+    }
+
+    if (pkg.dependencies) {
+      const deps = Object.keys(pkg.dependencies).slice(0, 5);
+      if (deps.length > 0) parts.push(`deps: ${deps.join(", ")}`);
+    }
+
+    if (pkg.scripts) {
+      const scripts = Object.entries(pkg.scripts)
+        .slice(0, 5)
+        .map(([k, v]) => {
+          const short = v.split(" ")[0] ?? v;
+          return `${k} (${short})`;
+        });
+      if (scripts.length > 0) parts.push(`scripts: ${scripts.join(", ")}`);
+    }
+
+    return parts.join(" | ") || "project manifest";
+  } catch {
+    return "project manifest";
+  }
+}
+
+function describeTsConfig(content: string): string {
+  try {
+    const raw = content.replace(/\/\/.*$/gm, "").replace(/,\s*([}\]])/g, "$1");
+    const tsconfig = JSON.parse(raw) as {
+      compilerOptions?: {
+        target?: string;
+        module?: string;
+        strict?: boolean;
+        jsx?: string;
+        outDir?: string;
+      };
+    };
+    const opts = tsconfig.compilerOptions;
+    if (!opts) return "TypeScript configuration";
+
+    const parts: string[] = [];
+    if (opts.target) parts.push(`target: ${opts.target}`);
+    if (opts.module) parts.push(`module: ${opts.module}`);
+    if (opts.strict) parts.push("strict");
+    if (opts.jsx) parts.push(`jsx: ${opts.jsx}`);
+    if (opts.outDir) parts.push(`outDir: ${opts.outDir}`);
+
+    return parts.length > 0 ? `TypeScript — ${parts.join(", ")}` : "TypeScript configuration";
+  } catch {
+    return "TypeScript configuration";
+  }
+}
+
 async function buildKeyFiles(root: string, files: string[]): Promise<string[]> {
   return Promise.all(
     files.slice(0, 12).map(async (file) => {
@@ -135,6 +213,23 @@ async function buildKeyFiles(root: string, files: string[]): Promise<string[]> {
       return `- \`${file}\`: ${desc}.`;
     }),
   );
+}
+
+const TS_EXTENSIONS = new Set([".ts", ".tsx", ".mts", ".cts"]);
+
+async function buildApiSurface(root: string, files: string[]): Promise<string[]> {
+  const tsFiles = files.filter((f) => TS_EXTENSIONS.has(extname(f)));
+  const lines: string[] = [];
+
+  for (const file of tsFiles.slice(0, 20)) {
+    const content = await readHead(join(root, file));
+    const exports = extractExports(content);
+    if (exports.length === 0) continue;
+    const line = formatSignatures(file, exports);
+    if (line) lines.push(line);
+  }
+
+  return lines;
 }
 
 function detectFrameworks(deps: Record<string, string>): string[] {
@@ -394,6 +489,7 @@ function extractDeploymentContext(files: string[]): { conventions: string[]; dec
 
 export async function extractGroupContent(root: string, groupName: string, files: string[]): Promise<ExtractedContent> {
   const keyFiles = await buildKeyFiles(root, files);
+  const apiSurface = await buildApiSurface(root, files);
 
   let groupContext: { conventions: string[]; decisions: string[] };
 
@@ -420,5 +516,5 @@ export async function extractGroupContent(root: string, groupName: string, files
       groupContext = { conventions: [], decisions: [] };
   }
 
-  return { keyFiles, ...groupContext };
+  return { keyFiles, apiSurface, ...groupContext };
 }

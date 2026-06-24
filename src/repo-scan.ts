@@ -3,6 +3,41 @@ import { join } from "node:path";
 import fg from "fast-glob";
 import type { SourceGroup } from "./types.js";
 
+export const BINARY_EXTENSIONS = new Set([
+  ".png",
+  ".jpg",
+  ".jpeg",
+  ".gif",
+  ".ico",
+  ".webp",
+  ".avif",
+  ".bmp",
+  ".svg",
+  ".woff",
+  ".woff2",
+  ".ttf",
+  ".eot",
+  ".otf",
+  ".mp4",
+  ".webm",
+  ".mov",
+  ".mp3",
+  ".wav",
+  ".ogg",
+  ".pdf",
+  ".zip",
+  ".gz",
+  ".tar",
+  ".br",
+  ".lock",
+  ".lockb",
+]);
+
+export function isBinaryFile(filePath: string): boolean {
+  const ext = filePath.slice(filePath.lastIndexOf(".")).toLowerCase();
+  return BINARY_EXTENSIONS.has(ext);
+}
+
 export const DEFAULT_IGNORE = [
   ".git/**",
   "**/.git/**",
@@ -118,6 +153,7 @@ const DEFAULT_GROUPS: Array<Omit<SourceGroup, "files">> = [
 export interface CapsuleConfig {
   groups: Array<{ name: string; description?: string; sources: string[] }>;
   ignore: string[];
+  maxTokensPerCapsule?: number;
 }
 
 export async function loadConfig(rootDir: string): Promise<CapsuleConfig> {
@@ -127,7 +163,7 @@ export async function loadConfig(rootDir: string): Promise<CapsuleConfig> {
   try {
     raw = await readFile(configPath, "utf8");
   } catch {
-    return { groups: [], ignore: [] };
+    return { groups: [], ignore: [], maxTokensPerCapsule: undefined };
   }
 
   let parsed: unknown;
@@ -175,7 +211,9 @@ export async function loadConfig(rootDir: string): Promise<CapsuleConfig> {
     ignore.push(...(obj.ignore as string[]));
   }
 
-  return { groups, ignore };
+  const maxTokensPerCapsule = typeof obj.maxTokensPerCapsule === "number" ? obj.maxTokensPerCapsule : undefined;
+
+  return { groups, ignore, maxTokensPerCapsule };
 }
 
 export async function listRepositoryFiles(rootDir: string, extraIgnore: string[] = []): Promise<string[]> {
@@ -215,7 +253,7 @@ export async function scanRepository(rootDir: string): Promise<SourceGroup[]> {
       ignore,
     });
 
-    const files = matched.filter((file) => allFiles.has(file)).sort();
+    const files = matched.filter((file) => allFiles.has(file) && !isBinaryFile(file)).sort();
     if (files.length > 0) {
       groups.push({ ...group, files });
     }

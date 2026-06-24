@@ -5,17 +5,20 @@
   "sources": [
     "package.json",
     "package-lock.json",
+    "pnpm-lock.yaml",
     "pnpm-workspace.yaml",
+    "bun.lockb",
     "yarn.lock",
     "docker-compose.yml",
     "Dockerfile",
-    ".env.example"
+    ".env.example",
+    ".env.local.example"
   ],
   "fingerprints": {
-    "package-lock.json": "sha256:2c7a5ccd781e4474f467fed4f67d37c000f99de310b2e49d8655931fe7ddf712",
-    "package.json": "sha256:c007314a370b68165ee174b31dd4e6f1917d5dedbe7cddaa6296e05f8677b700"
+    "package-lock.json": "sha256:689069842e16674c541fdb5666869aca19ffba5d6211ea1fb8c7326db7a47721",
+    "package.json": "sha256:4fda84d870adcd5ad25d3216b11b10e129e69a71ce38d68abddeb250b7d60f81"
   },
-  "updated_at": "2026-06-20T15:09:15.602Z"
+  "updated_at": "2026-06-24T11:04:35.189Z"
 }
 ---
 # Setup Capsule
@@ -27,7 +30,7 @@ Local setup, scripts, dependencies, and runtime configuration.
 ## Key Files
 
 - `package-lock.json`: source module.
-- `package.json`: project manifest — Markdown context packs that help coding agents reduce repeated repository-discovery tokens..
+- `package.json`: Markdown context packs that help coding agents reduce repeated repository-discovery tokens. | node >=20, ESM | bin: capsule, capsulectx | deps: commander, fast-glob, js-tiktoken | scripts: build (tsc), demo (node), dev (tsx), format (biome), lint (biome).
 
 ## Conventions
 

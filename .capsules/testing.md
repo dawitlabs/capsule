@@ -12,8 +12,8 @@
   "fingerprints": {
     "tests/capsule-format.test.ts": "sha256:84ede704e86d07eec68a71b85ad4e4e34c58c2b74eaa9103601ac6e3937ac54a",
     "tests/capsule-merge.test.ts": "sha256:3ea9b22ff36ed98754942ae7a990042ab6c8979b004609e4fa6c6dcddb7dd806",
-    "tests/cli.test.ts": "sha256:c74b117e9f0741725e222a49bd29e8d84d438a95f2f4e90263ccad0d685815fa",
-    "tests/estimate.test.ts": "sha256:8dc82add962aecb6d330d5477134cfe123e4d9022c614cf6af12b2615fa7f2ff",
+    "tests/cli.test.ts": "sha256:89684fc27f8210d36af36bb6a0d327bcd9a4d84d450f7359b30fe24d3e3fe35c",
+    "tests/estimate.test.ts": "sha256:1efeabf01e43006ff6c60dc396606d1a09dea85f858ade1d7f987aa68dfd52fb",
     "tests/fingerprint.test.ts": "sha256:ac224581259212e5cf77f2875114bcb86c87747462d01e9f432428c2409171da",
     "tests/fixtures/sample-repo/README.md": "sha256:504c93c0602db99e83b1f46edb699375a33b3018c0a4f8b7c707a3a470539b31",
     "tests/fixtures/sample-repo/package.json": "sha256:290c50f39b9050e62c552d25f8c5ed4d3632dc80e447cbadac3ba1e13ab33eb8",
@@ -23,7 +23,7 @@
     "tests/fixtures/sample-repo/tests/users.test.ts": "sha256:714024ded73b57beac0ca95dc36011c3e86823027c16845c467ba5d9fb789a96",
     "tests/repo-scan.test.ts": "sha256:df769a1d85b7d9cf9be184da014ec7c21b66ba403dd63e944e9b6c1e875448e1"
   },
-  "updated_at": "2026-06-20T15:21:00.504Z"
+  "updated_at": "2026-06-24T11:25:44.891Z"
 }
 ---
 # Testing Capsule
@@ -46,6 +46,13 @@ Automated tests, fixtures, mocks, and quality gates.
 - `tests/fixtures/sample-repo/src/db/schema.ts`: exports `schema`.
 - `tests/fixtures/sample-repo/tests/users.test.ts`: exports `sampleTestFile`.
 - `tests/repo-scan.test.ts`: source module.
+
+## API Surface
+
+- `tests/fixtures/sample-repo/src/api/users.ts`: users
+- `tests/fixtures/sample-repo/src/components/button.tsx`: Button(): void
+- `tests/fixtures/sample-repo/src/db/schema.ts`: schema
+- `tests/fixtures/sample-repo/tests/users.test.ts`: sampleTestFile
 
 ## Conventions
 

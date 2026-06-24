@@ -49,7 +49,8 @@
   },
   "dependencies": {
     "commander": "^12.1.0",
-    "fast-glob": "^3.3.2"
+    "fast-glob": "^3.3.2",
+    "js-tiktoken": "^1.0.21"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.0",

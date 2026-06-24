@@ -23,6 +23,8 @@ export function renderCapsuleBody(group: SourceGroup, content?: ExtractedContent
       ? group.files.map((f) => `- \`${f}\``).join("\n")
       : "- No files matched yet.";
 
+  const apiSurfaceSection = content?.apiSurface?.length ? `\n## API Surface\n\n${content.apiSurface.join("\n")}\n` : "";
+
   const conventionsSection = content?.conventions?.length
     ? content.conventions.join("\n")
     : "- Add durable coding conventions here as you discover them.";
@@ -40,7 +42,7 @@ ${group.description}
 ## Key Files
 
 ${keyFilesSection}
-
+${apiSurfaceSection}
 ## Conventions
 
 ${conventionsSection}

@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import fg from "fast-glob";
-import { DEFAULT_IGNORE } from "./repo-scan.js";
+import { DEFAULT_IGNORE, isBinaryFile } from "./repo-scan.js";
 import type { CapsuleName, StaleResult } from "./types.js";
 
 export async function computeFingerprints(
@@ -20,6 +20,7 @@ export async function computeFingerprints(
   const fingerprints: Record<string, string> = {};
 
   for (const file of files.sort()) {
+    if (isBinaryFile(file)) continue;
     const content = await readFile(join(rootDir, file));
     fingerprints[file] = `sha256:${createHash("sha256").update(content).digest("hex")}`;
   }
