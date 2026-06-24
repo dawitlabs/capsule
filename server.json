@@ -1,0 +1,20 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.dawitlabs/capsule",
+  "description": "Compact, source-linked context packs that reduce repeated repository-discovery tokens for coding agents. Scans your repo, generates compressed capsules with real token counting, and serves them via MCP tools and resources.",
+  "repository": {
+    "url": "https://github.com/dawitlabs/capsule",
+    "source": "github"
+  },
+  "version": "0.3.2",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "capsulectx",
+      "version": "0.3.2",
+      "transport": {
+        "type": "stdio"
+      }
+    }
+  ]
+}

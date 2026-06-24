@@ -1,8 +1,9 @@
 {
   "name": "capsulectx",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "private": false,
   "description": "Markdown context packs that help coding agents reduce repeated repository-discovery tokens.",
+  "mcpName": "io.github.dawitlabs/capsule",
   "license": "MIT",
   "author": "Dawit Worku",
   "type": "module",
