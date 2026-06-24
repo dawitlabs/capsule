@@ -114,6 +114,39 @@ Agents read `.capsules/index.md`, choose the relevant capsule, check staleness, 
 | `capsule scan` | Print detected source groups without writing |
 | `capsule stale [name]` | Check which source files changed since last write |
 | `capsule estimate <name>` | Show estimated token savings for one capsule |
+| `capsule stats` | Show token savings across all capsules |
+| `capsule --mcp` | Start MCP server for native agent integration |
+
+## MCP Server
+
+Capsule ships an MCP server so Claude Code and other MCP-compatible agents can natively discover and consume capsules — no manual file reads needed.
+
+**Add to your project's `.claude/settings.json`:**
+
+```json
+{
+  "mcpServers": {
+    "capsule": {
+      "command": "npx",
+      "args": ["capsulectx", "--mcp"]
+    }
+  }
+}
+```
+
+**Or globally in `~/.claude/settings.json`** to enable for all projects.
+
+Once configured, agents get these tools automatically:
+
+| Tool | What it does |
+|---|---|
+| `capsule_list` | List all capsules with freshness status |
+| `capsule_get` | Read a capsule's compressed context |
+| `capsule_stale` | Check which capsules have outdated sources |
+| `capsule_stats` | Show token savings per capsule |
+| `capsule_init` | Generate capsules for the current repo |
+
+Capsules are also available as MCP resources at `capsule:///index` and `capsule:///{name}`.
 
 ## Seeing the savings
 
@@ -134,7 +167,7 @@ With Capsule:
 Estimated discovery savings: 96%
 ```
 
-The estimator is directional — it uses 4 characters per token as a conservative approximation.
+Token counts use the cl100k_base tokenizer for accurate measurement.
 
 ## Agent Workflow
 
@@ -189,12 +222,15 @@ Capsule is early but functional. Current capabilities:
 - Static analysis: framework detection, table/model extraction, route detection, env vars
 - AI enrichment on init — launches your installed Claude CLI, calls Claude/OpenAI API, or generates a prompt for any browser-based AI (Claude.ai, ChatGPT, Cursor, Windsurf)
 - Write-safe re-generation: human edits to Conventions and Decisions are preserved on refresh
+- MCP server for native Claude Code / agent integration
+- Real token counting (cl100k_base) with savings dashboard
+- TypeScript API surface extraction
+- Binary file filtering
 - Stale detection and token savings estimation
 - Custom group config via `.capsules/config.json`
 - Auto-patches `CLAUDE.md`, `AGENTS.md`, `.cursorrules`, `.windsurfrules` with capsule instructions
 
 **Roadmap:**
-- `capsule enrich` — re-enrich existing capsules without re-initialising
 - smarter `write` that diffs source changes and suggests targeted updates
 - GitHub Action for stale capsule checks in CI
 - before/after token reports for real agent sessions
