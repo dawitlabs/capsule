@@ -67,6 +67,19 @@ describe("mcp tools", () => {
     expect(result.isError).toBeFalsy();
   });
 
+  it("capsule_get auto-refreshes stale capsules", async () => {
+    await setupFixture();
+    ({ server, client } = await createConnectedPair());
+    await client.callTool({ name: "capsule_init" });
+
+    await writeFile(join(root, "src/api/users.ts"), "export const users = ['changed'];", "utf8");
+
+    const result = await client.callTool({ name: "capsule_get", arguments: { name: "api" } });
+    const text = (result.content as Array<{ text: string }>)[0].text;
+    expect(text).toContain("auto-refreshed");
+    expect(text).toContain("# API Capsule");
+  });
+
   it("capsule_get returns error for missing capsule", async () => {
     await setupFixture();
     ({ server, client } = await createConnectedPair());

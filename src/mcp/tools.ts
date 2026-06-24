@@ -51,13 +51,35 @@ export function registerTools(server: McpServer, rootDir: string): void {
   server.registerTool(
     "capsule_get",
     {
-      description: "Read a capsule's compressed context (replaces reading raw source files)",
+      description: "Read a capsule's compressed context. Auto-refreshes if sources changed.",
       inputSchema: { name: z.string().describe("Capsule name, e.g. 'architecture', 'api'") },
-      annotations: { readOnlyHint: true, destructiveHint: false },
+      annotations: { readOnlyHint: false, destructiveHint: false },
     },
     async ({ name }) => {
       try {
         const capsule = await readCapsule(rootDir, name);
+
+        const config = await loadConfig(rootDir);
+        const current = await computeFingerprints(rootDir, capsule.frontmatter.sources, config.ignore);
+        const stale = compareFingerprints(name, capsule.frontmatter.fingerprints, current);
+
+        if (!stale.fresh) {
+          const groups = await scanRepository(rootDir);
+          const group = groups.find((g) => g.name === name);
+          if (group) {
+            await writeGroupCapsule(rootDir, group);
+            const refreshed = await readCapsule(rootDir, name);
+            return {
+              content: [
+                {
+                  type: "text" as const,
+                  text: `[auto-refreshed: ${stale.changed.length + stale.added.length} files changed]\n\n${refreshed.body.trim()}`,
+                },
+              ],
+            };
+          }
+        }
+
         return { content: [{ type: "text" as const, text: capsule.body.trim() }] };
       } catch {
         return {
